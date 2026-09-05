@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BESTARI - Biopesticide Eco-Spray Technology with AI</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bestari: {
+              dark: '#1E4852',
+              darker: '#17373F',
+              teal: '#2A5B64',
+              accent: '#2D8A68',
+              mint: '#A8E6CF',
+              lightmint: '#D9F7EC',
+              bg: '#EFF4F2',
+              warning: '#D9534F',
+              warningBg: '#FDE8E8',
+              subtext: '#6B878C',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & Babel CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #DCE7E3;
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+      height: 4px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: #E5ECE9;
+      border-radius: 4px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #2A5B64;
+      border-radius: 4px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.25s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-0 md:py-6">
+
+  <div id="root" class="w-full max-w-md bg-[#EFF4F2] min-h-screen md:min-h-[850px] md:h-[880px] md:rounded-[40px] md:shadow-2xl md:border-[10px] md:border-[#1E4852] overflow-y-auto relative flex flex-col"></div>
+
+  <!-- Application Script -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // SVG Data URLs for leaf images
+    const LEAF_IMAGE_SAFE = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="%23223028"/><rect x="50" y="40" width="700" height="420" rx="16" fill="%233A5043"/><path d="M120 180 Q 250 80 400 160 T 680 120 Q 720 280 600 380 T 250 400 Q 100 320 120 180 Z" fill="%234E7C59" stroke="%23A8E6CF" stroke-width="3"/><path d="M 250 400 Q 380 260 600 120" stroke="%2385D6B1" stroke-width="4" fill="none"/><path d="M 320 320 Q 220 280 180 240" stroke="%2385D6B1" stroke-width="2" fill="none"/><path d="M 380 260 Q 480 240 540 210" stroke="%2385D6B1" stroke-width="2" fill="none"/><circle cx="150" cy="120" r="14" fill="%232D4336"/><circle cx="650" cy="380" r="18" fill="%232D4336"/><text x="40" y="485" font-family="sans-serif" font-size="14" fill="%23A8E6CF" font-weight="bold">BESTARI AI - BEDENGAN TANAMAN CABAI ZONE A (HEALTHY)</text></svg>`;
+
+    const LEAF_IMAGE_WARNING = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="%23241F20"/><rect x="50" y="40" width="700" height="420" rx="16" fill="%233B443B"/><path d="M120 180 Q 250 80 400 160 T 680 120 Q 720 280 600 380 T 250 400 Q 100 320 120 180 Z" fill="%234A7052" stroke="%237CA682" stroke-width="3"/><path d="M 250 400 Q 380 260 600 120" stroke="%237CA682" stroke-width="4" fill="none"/><circle cx="340" cy="220" r="28" fill="%23241F20"/><circle cx="480" cy="290" r="34" fill="%23241F20"/><path d="M 330 200 Q 340 230 350 210" stroke="%23856D3B" stroke-width="3" fill="none"/><g stroke="%23D9534F" stroke-width="3" fill="rgba(217,83,79,0.15)"><rect x="300" y="180" width="80" height="80" rx="6"/><text x="305" y="175" font-family="sans-serif" font-size="13" font-weight="bold" fill="%23FF6B6B">Ulat Grayak (89%)</text><rect x="430" y="240" width="100" height="90" rx="6"/><text x="435" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="%23FF6B6B">Ulat Grayak (92%)</text></g><ellipse cx="340" cy="220" rx="14" ry="7" fill="%23A45C3D"/><ellipse cx="480" cy="285" rx="18" ry="9" fill="%23A45C3D"/><text x="40" y="485" font-family="sans-serif" font-size="14" fill="%23FF6B6B" font-weight="bold">BESTARI AI - WARN: 2 PESTS DETECTED (YOLOv8 ENGINE)</text></svg>`;
+
+    // Initial Data
+    const initialStatus = {
+      plant_status: "warning",
+      threat_message: "2 pests found (Ulat Grayak)",
+      confidence: 0.89,
+      biopesticide_level: 85,
+      temp: 24.0,
+      humidity: 68.0,
+      active_node: "v1.0",
+      camera_feeds: [
+        { cam_id: "Cam 1", name: "Zone A1", image_url: LEAF_IMAGE_WARNING },
+        { cam_id: "Cam 2", name: "Zone B2", image_url: LEAF_IMAGE_SAFE },
+        { cam_id: "Cam 3", name: "Zone C1", image_url: LEAF_IMAGE_SAFE }
+      ]
+    };
+
+    const visualLogs = [
+      { id: "log_1029", formatted_time: "10:30 AM", date: "Oct 24, 2026", cam_id: "Cam 1", status: "warning", hama_terdeteksi: 2, confidence: 0.89, image_url: LEAF_IMAGE_WARNING, threat_type: "Ulat Grayak (Spodoptera litura)" },
+      { id: "log_1028", formatted_time: "08:15 AM", date: "Oct 24, 2026", cam_id: "Cam 2", status: "safe", hama_terdeteksi: 0, confidence: 0.98, image_url: LEAF_IMAGE_SAFE, threat_type: "Daun Sehat / Safe" },
+      { id: "log_1027", formatted_time: "06:00 AM", date: "Oct 24, 2026", cam_id: "Cam 3", status: "safe", hama_terdeteksi: 0, confidence: 0.96, image_url: LEAF_IMAGE_SAFE, threat_type: "Daun Sehat / Safe" }
+    ];
+
+    function App() {
+      const [isLoggedIn, setIsLoggedIn] = useState(true);
+      const [activeTab, setActiveTab] = useState('home');
+      const [status, setStatus] = useState(initialStatus);
+      const [selectedCam, setSelectedCam] = useState('Cam 1');
+      const [isSpraying, setIsSpraying] = useState(false);
+      const [sprayCountdown, setSprayCountdown] = useState(0);
+      const [selectedLog, setSelectedLog] = useState(null);
+      const [toastMsg, setToastMsg] = useState(null);
+      const [showPinoutModal, setShowPinoutModal] = useState(false);
+
+      useEffect(() => {
+        if (window.lucide) window.lucide.createIcons();
+      });
+
+      const handleSpray = () => {
+        if (isSpraying) return;
+        setIsSpraying(true);
+        setSprayCountdown(3);
+        setToastMsg("Penyemprotan Beauveria bassiana aktif via Relay GPIO 14 (3s)!");
+
+        const timer = setInterval(() => {
+          setSprayCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              setIsSpraying(false);
+              setStatus(s => ({ ...s, biopesticide_level: Math.max(5, s.biopesticide_level - 1) }));
+              setTimeout(() => setToastMsg(null), 3000);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      };
+
+      const activeCamObj = status.camera_feeds.find(c => c.cam_id === selectedCam) || status.camera_feeds[0];
+      const isWarning = selectedCam === 'Cam 1' && status.plant_status === 'warning';
+
+      if (!isLoggedIn) {
+        return (
+          <div className="min-h-screen bg-white flex flex-col justify-between px-6 py-8">
+            <div className="flex flex-col items-center pt-8 pb-4">
+              <div className="w-24 h-24 mb-4 flex items-center justify-center text-[#2A5B64]">
+                <svg className="w-20 h-20" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="3.5">
+                  <path d="M 50 15 C 25 15, 12 35, 15 50 C 30 50, 45 45, 50 45 C 55 45, 70 50, 85 50 C 88 35, 75 15, 50 15 Z" />
+                  <path d="M 40 47 C 38 60, 42 72, 44 78 C 50 79, 56 79, 60 78 C 62 72, 60 60, 60 47" />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-extrabold text-[#1E4852] tracking-wider mb-1">BESTARI</h1>
+              <p className="text-[#6B878C] text-sm font-medium">Smart Farming for a Greener Tomorrow</p>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); setIsLoggedIn(true); }} className="space-y-4 my-auto">
+              <div>
+                <label className="block text-xs font-bold text-[#1E4852] uppercase mb-1">EMAIL ADDRESS</label>
+                <input type="email" defaultValue="BESTARI@gmail.com" required className="w-full bg-[#F7FAF9] border border-[#D0DDD8] rounded-xl py-3 px-4 text-sm font-semibold text-[#1E4852]" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[#1E4852] uppercase mb-1">PASSWORD</label>
+                <input type="password" defaultValue="••••••••" required className="w-full bg-[#F7FAF9] border border-[#D0DDD8] rounded-xl py-3 px-4 text-sm font-semibold text-[#1E4852]" />
+              </div>
+              <button type="submit" className="w-full bg-[#2A5B64] hover:bg-[#1E4852] text-white font-bold py-3.5 rounded-xl shadow-md text-sm">
+                Login →
+              </button>
+            </form>
+
+            <div className="pt-4 border-t border-[#E5ECE9] text-center text-[10px] font-bold text-[#9AB0B4]">
+              🛡 SECURE CONNECTION &nbsp;&nbsp;|&nbsp;&nbsp; ((•)) SYSTEM ONLINE
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-full flex flex-col bg-[#EFF4F2] pb-20">
+          {/* Header */}
+          <header className="flex items-center justify-between px-4 py-3 bg-[#EFF4F2] border-b border-[#D8E4E0] sticky top-0 z-30">
+            <div className="font-extrabold text-lg text-[#1E4852] flex items-center gap-2">
+              <span className="w-7 h-7 rounded-full bg-[#1E4852] text-[#A8E6CF] flex items-center justify-center text-xs">🍄</span>
+              <span>{activeTab === 'history' ? 'History' : activeTab === 'settings' ? 'Settings' : 'BESTARI'}</span>
+            </div>
+            <div className="text-xs font-bold text-[#2D8A68] bg-[#D9F7EC] px-2.5 py-1 rounded-full">
+              ● Online
+            </div>
+          </header>
+
+          {/* Toast Notification */}
+          {toastMsg && (
+            <div className="m-3 bg-[#1E4852] text-[#A8E6CF] text-xs font-semibold px-4 py-2.5 rounded-xl flex justify-between items-center animate-fade-in shadow-md">
+              <span>{toastMsg}</span>
+              <button onClick={() => setToastMsg(null)}>✕</button>
+            </div>
+          )}
+
+          {/* HOME TAB */}
+          {activeTab === 'home' && (
+            <div className="p-4 space-y-4">
+              <div>
+                <h2 className="text-lg font-bold text-[#1E4852] mb-2">Last Photo Feed</h2>
+                <div className="flex gap-2 mb-3">
+                  {['Cam 1', 'Cam 2', 'Cam 3'].map(cam => (
+                    <button
+                      key={cam}
+                      onClick={() => setSelectedCam(cam)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold ${
+                        selectedCam === cam ? 'bg-[#2A5B64] text-white' : 'bg-white text-[#1E4852] border border-[#D8E4E0]'
+                      }`}
+                    >
+                      {cam}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden shadow-md aspect-[16/10] bg-black">
+                  <img src={activeCamObj.image_url} className="w-full h-full object-cover" />
+                  <div className="absolute bottom-3 left-3 bg-black/70 text-white text-[10px] font-mono px-3 py-1 rounded-md">
+                    ESP32-CAM: {selectedCam}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white p-4 rounded-2xl border border-[#D8E4E0]">
+                  <span className="text-[10px] font-bold text-[#6B878C] uppercase">PLANT STATUS</span>
+                  <div className="my-2">
+                    {isWarning ? (
+                      <span className="px-3 py-1 rounded-full bg-[#FDE8E8] text-[#D9534F] font-bold text-xs">⚠️ Warning</span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-full bg-[#D9F7EC] text-[#2D8A68] font-bold text-xs">✔ Safe</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[#6B878C]">Last check: 2m ago</p>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-[#D8E4E0]">
+                  <span className="text-[10px] font-bold text-[#6B878C] uppercase">THREAT SCAN</span>
+                  <p className="font-bold text-xs text-[#1E4852] my-1">
+                    {isWarning ? '2 pests found (Ulat Grayak)' : 'No pests found'}
+                  </p>
+                  <p className="text-[10px] text-[#6B878C]">Scanning area...</p>
+                </div>
+              </div>
+
+              {/* Biopesticide Bar */}
+              <div className="bg-white p-4 rounded-2xl border border-[#D8E4E0] space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-[#6B878C] uppercase">BIOPESTICIDE LEVEL</span>
+                  <span className="text-lg font-black text-[#1E4852]">{status.biopesticide_level}%</span>
+                </div>
+                <div className="w-full bg-[#E5ECE9] h-3 rounded-full overflow-hidden">
+                  <div className="bg-[#2A5B64] h-full transition-all" style={{ width: `${status.biopesticide_level}%` }} />
+                </div>
+                <div className="flex justify-between text-[10px] text-[#6B878C] font-semibold">
+                  <span>0L Empty</span>
+                  <span>5L Capacity</span>
+                </div>
+              </div>
+
+              {/* Pump Control Banner */}
+              <div className="bg-[#2A5B64] text-white p-4.5 rounded-2xl shadow-md flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-extrabold">Pump Control</h3>
+                  <p className="text-xs text-[#A8E6CF]">
+                    {isSpraying ? `Menyemprot (${sprayCountdown}s)...` : 'Manual Irrigation override'}
+                  </p>
+                </div>
+                <button
+                  onClick={handleSpray}
+                  disabled={isSpraying}
+                  className="w-14 h-14 rounded-full bg-[#A8E6CF] text-[#1E4852] font-bold text-xs shadow-md hover:bg-[#85D6B1] flex flex-col items-center justify-center"
+                >
+                  💧 {isSpraying ? `${sprayCountdown}s` : 'Spray'}
+                </button>
+              </div>
+
+              {/* Metrics */}
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-white p-3 rounded-2xl border border-[#D8E4E0]">
+                  <span className="text-lg font-black text-[#1E4852] block">24°C</span>
+                  <span className="text-[9px] font-bold text-[#6B878C]">TEMP</span>
+                </div>
+                <div className="bg-white p-3 rounded-2xl border border-[#D8E4E0]">
+                  <span className="text-lg font-black text-[#1E4852] block">68%</span>
+                  <span className="text-[9px] font-bold text-[#6B878C]">HUMID</span>
+                </div>
+                <div className="bg-white p-3 rounded-2xl border border-[#D8E4E0]">
+                  <span className="text-lg font-black text-[#1E4852] block">v1.0</span>
+                  <span className="text-[9px] font-bold text-[#6B878C]">NODE</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* HISTORY TAB */}
+          {activeTab === 'history' && (
+            <div className="p-4 space-y-4">
+              <div>
+                <span className="text-[10px] font-bold text-[#6B878C] uppercase block mb-2">VISUAL LOGS</span>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {visualLogs.map(log => (
+                    <div key={log.id} onClick={() => setSelectedLog(log)} className="min-w-[190px] h-32 rounded-xl overflow-hidden relative shadow-sm border border-[#D8E4E0] cursor-pointer">
+                      <img src={log.image_url} className="w-full h-full object-cover" />
+                      <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-[9px] px-2 py-1 rounded">
+                        {log.cam_id} - {log.formatted_time}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#D8E4E0] space-y-2">
+                <span className="text-[10px] font-bold text-[#6B878C] uppercase">PLANT STATUS HISTORY</span>
+                <h3 className="text-xs font-bold text-[#1E4852]">Health Score Matrix</h3>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs text-white font-bold pt-2">
+                  <div className="bg-[#1E4852] p-2 rounded-lg">Cam 1: 89%</div>
+                  <div className="bg-[#2A5B64] p-2 rounded-lg">Cam 2: 95%</div>
+                  <div className="bg-[#4EAA98] p-2 rounded-lg">Cam 3: 92%</div>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#D8E4E0] space-y-2">
+                <span className="text-[10px] font-bold text-[#6B878C] uppercase">THREAT FREQUENCY</span>
+                <p className="text-xs font-semibold text-[#D9534F]">Alert spikes detected (Peak at 14:00)</p>
+                <div className="h-20 bg-[#F7FAF9] rounded-xl flex items-center justify-center text-xs text-[#6B878C] border border-[#E5ECE9]">
+                  📈 Graph curve: 5 pest spikes recorded today
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SETTINGS TAB */}
+          {activeTab === 'settings' && (
+            <div className="p-4 space-y-4">
+              <div className="bg-white p-4 rounded-2xl border border-[#D8E4E0] space-y-3">
+                <h3 className="font-extrabold text-sm text-[#1E4852]">Hardware Config</h3>
+                <p className="text-xs text-[#6B878C]">ESP32-CAM Relay Pin: GPIO 14</p>
+                <button onClick={() => setShowPinoutModal(true)} className="bg-[#2A5B64] text-white text-xs font-bold px-3 py-1.5 rounded-lg">
+                  Lihat Pinout Schema
+                </button>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#D8E4E0] space-y-2">
+                <h3 className="font-extrabold text-sm text-[#1E4852]">Tim BESTARI</h3>
+                <p className="text-xs text-[#6B878C]">Ketua: Fajrin Al Majid (SMAN Sumatera Selatan)</p>
+                <p className="text-xs text-[#6B878C]">Samsung Solve for Tomorrow 2026</p>
+              </div>
+
+              <button onClick={() => setIsLoggedIn(false)} className="w-full bg-[#FDE8E8] text-[#D9534F] font-bold py-3 rounded-xl text-xs">
+                Sign Out
+              </button>
+            </div>
+          )}
+
+          {/* Bottom Nav */}
+          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-[#D8E4E0] p-2 flex justify-around items-center z-40">
+            {[
+              { id: 'home', label: 'Home', icon: '🏡' },
+              { id: 'history', label: 'History', icon: '📊' },
+              { id: 'settings', label: 'Settings', icon: '⚙️' }
+            ].map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`py-1 px-5 rounded-full text-xs font-bold flex items-center gap-1 ${
+                  activeTab === item.id ? 'bg-[#C8F2E2] text-[#1E4852]' : 'text-[#6B878C]'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
