@@ -254,7 +254,7 @@ def main():
         help="Nama folder eksperiment training (default: bestari_ulat_grayak_model)"
     )
     parser.add_argument(
-        "--no-export", dest="export", action="false",
+        "--no-export", dest="export", action="store_false",
         help="Matikan ekspor otomatis ke ONNX & TFLite setelah training"
     )
     

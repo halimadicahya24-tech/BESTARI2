@@ -101,7 +101,8 @@ def detect_pest():
                     "bbox": [round(x, 1) for x in bbox]
                 })
 
-                if "ulat" in class_name.lower() or "grayak" in class_name.lower() or cls_id == 0:
+                threat_keywords = ["ulat", "grayak", "armyworm", "larva", "damage", "egg", "frass"]
+                if any(k in class_name.lower() for k in threat_keywords) or cls_id in [0, 1, 2, 3]:
                     ulat_grayak_count += 1
                     is_threat_detected = True
 
