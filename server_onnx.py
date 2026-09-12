@@ -96,6 +96,9 @@ def forward_to_vercel(payload):
     except Exception as e:
         print(f"[BESTARI ONNX WEBHOOK ERROR] Gagal mengirim ke Vercel ({url}): {e}")
 
+# Menyimpan riwayat log foto real-time dari ESP32-CAM di memori PythonAnywhere (24/7)
+history_logs = []
+
 def load_onnx_model():
     global session, input_name
     if session is not None:
@@ -109,9 +112,16 @@ def load_onnx_model():
             model_file = alt_path
 
     print(f"[BESTARI ONNX AI] Memuat model: {model_file}")
-    session = ort.InferenceSession(str(model_file), providers=['CPUExecutionProvider'])
+    
+    # Opsi thread tunggal hemat memori untuk cegah crash di PythonAnywhere WSGI
+    opts = ort.SessionOptions()
+    opts.intra_op_num_threads = 1
+    opts.inter_op_num_threads = 1
+    opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+
+    session = ort.InferenceSession(str(model_file), opts, providers=['CPUExecutionProvider'])
     input_name = session.get_inputs()[0].name
-    print("[BESTARI ONNX AI] Model ONNX berhasil diinisialisasi!")
+    print("[BESTARI ONNX AI] Model ONNX berhasil diinisialisasi (Single-Thread Mode)!")
 
 # Otomatis muat model saat server di-import oleh WSGI / PythonAnywhere
 try:
@@ -127,7 +137,16 @@ def index():
         "system": "BESTARI Pest Monitoring AI Server",
         "conf_threshold": CONF_THRESHOLD,
         "vercel_webhook": VERCEL_APP_URL or "Belum Diatur",
+        "total_logs": len(history_logs),
         "classes": CLASS_NAMES
+    })
+
+@app.route('/history', methods=['GET'])
+def get_history():
+    """Mengembalikan daftar seluruh log riwayat foto real yang pernah ditangkap ESP32-CAM."""
+    return jsonify({
+        "status": "success",
+        "visualLogs": history_logs
     })
 
 @app.route('/config', methods=['GET', 'POST'])
@@ -280,6 +299,22 @@ def detect_pest():
             "image_base64": img_b64,
             "detections": detections
         })
+
+        # Prepend ke riwayat log foto real-time
+        new_log_entry = {
+            "id": f"log_{int(time.time() * 1000)}",
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "formatted_time": current_time_str,
+            "date": time.strftime("%b %d, %Y", time.localtime()),
+            "cam_id": "ESP32-CAM (Utama)",
+            "status": plant_status,
+            "hama_terdeteksi": ulat_grayak_count,
+            "confidence": round(detections[0]["confidence"], 2) if detections else 0.95,
+            "image_url": img_b64,
+            "threat_type": f"Ulat Grayak ({ulat_grayak_count} ekor)" if is_threat_detected else "Daun Sehat / Safe"
+        }
+        history_logs.insert(0, new_log_entry)
+        del history_logs[30:] # Batasi maksimal 30 log terbaru
 
         vercel_payload = {
             "cam_id": "Cam 1",

@@ -94,13 +94,27 @@ export async function fetchVisualLogs(): Promise<VisualLog[]> {
     const res = await fetch('/api/detections', { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
-      if (data.visualLogs && Array.isArray(data.visualLogs)) {
+      if (data.visualLogs && Array.isArray(data.visualLogs) && data.visualLogs.length > 0) {
         return data.visualLogs;
       }
     }
   } catch (err) {
     console.warn('Fetch visual logs fallback:', err);
   }
+
+  // Fallback: Query langsung ke Server AI PythonAnywhere 24/7
+  try {
+    const res = await fetch('https://halimadi.pythonanywhere.com/history', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.visualLogs && Array.isArray(data.visualLogs)) {
+        return data.visualLogs;
+      }
+    }
+  } catch (err) {
+    console.warn('PythonAnywhere history fallback error:', err);
+  }
+
   return [];
 }
 
