@@ -56,6 +56,7 @@ latest_telemetry = {
 def forward_to_vercel(payload):
     """Mengirim hasil deteksi dan foto ke Vercel App secara asynchronous"""
     if not VERCEL_APP_URL:
+        print("[BESTARI WEBHOOK NOTICE] VERCEL_APP_URL belum diatur. Melewati pengiriman ke Vercel.")
         return
     try:
         url = f"{VERCEL_APP_URL}/api/detections"
@@ -63,12 +64,15 @@ def forward_to_vercel(payload):
         req = urllib.request.Request(
             url,
             data=data,
-            headers={'Content-Type': 'application/json'}
+            headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BESTARI-AI-Server/2.0'
+            }
         )
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=10) as response:
             print(f"[BESTARI WEBHOOK] Berhasil terkirim ke Vercel: {response.status}")
     except Exception as e:
-        print(f"[BESTARI WEBHOOK WARN] Gagal mengirim ke Vercel ({url}): {e}")
+        print(f"[BESTARI WEBHOOK ERROR] Gagal mengirim ke Vercel ({url}): {e}")
 
 def load_yolo_model():
     global model
@@ -156,8 +160,15 @@ def detect_pest():
         img_b64 = "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")
         current_time_str = time.strftime("%H:%M WIB", time.localtime())
 
-        # Update Telemetri Global In-Memory
+        # Baca Sensor Kelembaban Tanah dari Header ESP32-CAM (jika ada)
+        soil_moisture_header = request.headers.get("X-Soil-Moisture")
+        water_level = int(soil_moisture_header) if (soil_moisture_header and soil_moisture_header.isdigit()) else 60
+
+        # Jika menyemprot, kurangi biopestisida sebesar 1%
         global latest_telemetry
+        if should_spray:
+            latest_telemetry["biopesticide_level"] = max(0, latest_telemetry["biopesticide_level"] - 1)
+
         latest_telemetry.update({
             "plant_status": plant_status,
             "threat_detected": is_threat_detected,
@@ -177,6 +188,8 @@ def detect_pest():
             "relay_action": relay_action,
             "spray_duration_ms": spray_duration_ms,
             "inference_time_ms": inference_time_ms,
+            "water_level": water_level,
+            "biopesticide_level": latest_telemetry["biopesticide_level"],
             "total_detections": len(detections),
             "detections": detections,
             "image_url": img_b64,

@@ -63,25 +63,32 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </span>
         </div>
 
-        {/* Camera Selector Pills */}
-        <div className="flex gap-2">
-          {cameraFeeds.map((cam: CameraFeed) => {
-            const isSelected = cam.cam_id === selectedCamId;
-            return (
-              <button
-                key={cam.cam_id}
-                onClick={() => setSelectedCamId(cam.cam_id)}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
-                  isSelected
-                    ? 'bg-[#305664] text-white shadow-2xs'
-                    : 'bg-[#F2F4F3] text-[#41484B] hover:bg-[#ECEEED]'
-                }`}
-              >
-                {cam.cam_id.toUpperCase()}
-              </button>
-            );
-          })}
-        </div>
+        {/* Camera Indicator */}
+        {cameraFeeds.length > 1 ? (
+          <div className="flex gap-2">
+            {cameraFeeds.map((cam: CameraFeed) => {
+              const isSelected = cam.cam_id === selectedCamId;
+              return (
+                <button
+                  key={cam.cam_id}
+                  onClick={() => setSelectedCamId(cam.cam_id)}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                    isSelected
+                      ? 'bg-[#305664] text-white shadow-2xs'
+                      : 'bg-[#F2F4F3] text-[#41484B] hover:bg-[#ECEEED]'
+                  }`}
+                >
+                  {cam.cam_id.toUpperCase()}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between bg-[#F2F4F3] px-3 py-1.5 rounded-lg border border-[#E1E3E2] text-xs">
+            <span className="font-extrabold text-[#191C1C]">Kamera: <span className="text-[#305664]">ESP32-CAM BESTARI</span></span>
+            <span className="text-[10px] text-[#386758] font-bold bg-[#B8EAD7] px-2 py-0.5 rounded-full">Stream Aktif</span>
+          </div>
+        )}
 
         {/* Viewfinder Frame Overlay (16:9 Aspect Ratio) */}
         <div className="relative rounded-xl overflow-hidden bg-black border-2 border-[#305664] aspect-[16/9] shadow-inner group">

@@ -34,6 +34,8 @@ export async function POST(request: Request) {
       ulat_grayak_count = 0,
       image_url,
       detections = [],
+      water_level,
+      biopesticide_level,
       formatted_time = 'Baru saja',
       timestamp = new Date().toISOString(),
     } = body;
@@ -52,6 +54,8 @@ export async function POST(request: Request) {
         ? `${ulat_grayak_count} hama terdeteksi (Ulat Grayak)`
         : 'Tanaman dalam kondisi sehat & bebas hama',
       confidence: detections.length > 0 ? (detections[0].confidence || 0.90) : 0.95,
+      water_level: water_level !== undefined ? water_level : currentSystemStatus.water_level,
+      biopesticide_level: biopesticide_level !== undefined ? biopesticide_level : currentSystemStatus.biopesticide_level,
       last_updated: formatted_time,
       pump_status: {
         ...currentSystemStatus.pump_status,

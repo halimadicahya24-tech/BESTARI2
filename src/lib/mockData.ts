@@ -20,24 +20,10 @@ export const initialSystemStatus: SystemStatusResponse = {
   camera_feeds: [
     {
       cam_id: "Cam 1",
-      name: "Bedengan Utama Zone A1",
+      name: "ESP32-CAM BESTARI",
       is_active: true,
       image_url: LEAF_IMAGE_WARNING,
       last_capture_time: "10:30 AM"
-    },
-    {
-      cam_id: "Cam 2",
-      name: "Bedengan Sayur Zone B2",
-      is_active: true,
-      image_url: LEAF_IMAGE_SAFE,
-      last_capture_time: "10:28 AM"
-    },
-    {
-      cam_id: "Cam 3",
-      name: "Persemaian Bibit Zone C1",
-      is_active: true,
-      image_url: LEAF_IMAGE_SAFE,
-      last_capture_time: "10:25 AM"
     }
   ],
   pump_status: {
@@ -68,7 +54,7 @@ export const initialVisualLogs: VisualLog[] = [
     timestamp: "2026-10-24T08:15:00Z",
     formatted_time: "08:15 AM",
     date: "Oct 24, 2026",
-    cam_id: "Cam 2",
+    cam_id: "Cam 1",
     status: "safe",
     hama_terdeteksi: 0,
     confidence: 0.98,
@@ -80,7 +66,7 @@ export const initialVisualLogs: VisualLog[] = [
     timestamp: "2026-10-24T06:00:00Z",
     formatted_time: "06:00 AM",
     date: "Oct 24, 2026",
-    cam_id: "Cam 3",
+    cam_id: "Cam 1",
     status: "safe",
     hama_terdeteksi: 0,
     confidence: 0.96,
@@ -102,10 +88,11 @@ export const initialVisualLogs: VisualLog[] = [
 ];
 
 export const healthScoreMatrix = [
-  { time: "06:00", cam1: 95, cam2: 98, cam3: 92 },
-  { time: "12:00", cam1: 82, cam2: 90, cam3: 94 },
-  { time: "18:00", cam1: 88, cam2: 85, cam3: 90 },
-  { time: "00:00", cam1: 90, cam2: 95, cam3: 88 }
+  { time: "06:00", score: 96, status: "safe" },
+  { time: "08:15", score: 98, status: "safe" },
+  { time: "10:30", score: 78, status: "warning" },
+  { time: "14:00", score: 92, status: "safe" },
+  { time: "17:00", score: 95, status: "safe" }
 ];
 
 export const threatFrequencyData = [

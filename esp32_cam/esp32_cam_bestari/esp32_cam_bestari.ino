@@ -29,7 +29,6 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
-#include "driver/adc.h"
 
 // ===============================================================================
 // 1. KONFIGURASI WIFI & SERVER FLASK AI PYTHONANYWHERE
@@ -38,8 +37,8 @@ const char* WIFI_SSID     = "mjid";         // Ganti dengan SSID Wi-Fi Anda
 const char* WIFI_PASSWORD = "8765432111";     // Ganti dengan Password Wi-Fi Anda
 
 // Host SSL & Path Server PythonAnywhere Anda
-// Contoh jika URL Anda: "https://bestari-ai.pythonanywhere.com/detect"
-const char* SERVER_HOST   = "https://halimadi.pythonanywhere.com/"; // Ganti dengan username PythonAnywhere Anda
+// Contoh jika URL Anda: "https://halimadi.pythonanywhere.com/detect"
+const char* SERVER_HOST   = "halimadi.pythonanywhere.com"; // Domain PythonAnywhere murni (tanpa https://)
 const int   SERVER_PORT   = 443;                          // Port 443 untuk HTTPS
 const char* SERVER_PATH   = "/detect";                    // Endpoint Flask
 
@@ -113,8 +112,8 @@ bool initCamera() {
   config.pin_pclk     = PCLK_GPIO_NUM;
   config.pin_vsync    = VSYNC_GPIO_NUM;
   config.pin_href     = HREF_GPIO_NUM;
-  config.pin_siod     = SIOD_GPIO_NUM;
-  config.pin_sioc     = SIOC_GPIO_NUM;
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn     = PWDN_GPIO_NUM;
   config.pin_reset    = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
@@ -150,10 +149,14 @@ bool initCamera() {
 void connectWiFi() {
   Serial.print("[BESTARI NETWORK] Menghubungkan ke Wi-Fi ");
   Serial.print(WIFI_SSID);
+
+  WiFi.disconnect(true);
+  delay(200);
+  WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int attempt = 0;
-  while (WiFi.status() != WL_CONNECTED && attempt < 25) {
+  while (WiFi.status() != WL_CONNECTED && attempt < 40) {
     delay(500);
     Serial.print(".");
     attempt++;
@@ -169,27 +172,16 @@ void connectWiFi() {
 }
 
 // ===============================================================================
-// MEMBACA SENSOR SOIL MOISTURE (GPIO 13 / ADC2_CH4)
+// MEMBACA SENSOR SOIL MOISTURE (GPIO 13)
 // ===============================================================================
 int readSoilMoisturePercentage(int &rawVal) {
-  // Gunakan adc2_get_raw untuk menghindari konflik driver Wi-Fi dengan ADC2
   int sum = 0;
-  int validReadings = 0;
-  
   for (int i = 0; i < 5; i++) {
-    int readVal = 0;
-    esp_err_t r = adc2_get_raw(ADC2_CHANNEL_4, ADC_WIDTH_12Bit, &readVal);
-    if (r == ESP_OK) {
-      sum += readVal;
-      validReadings++;
-    } else {
-      sum += analogRead(SOIL_SENSOR_PIN);
-      validReadings++;
-    }
+    sum += analogRead(SOIL_SENSOR_PIN);
     delay(10);
   }
 
-  rawVal = (validReadings > 0) ? (sum / validReadings) : 3000;
+  rawVal = sum / 5;
 
   // Kalibrasi persentase kelembaban (0% - 100%)
   int percentage = map(rawVal, 3500, 1400, 0, 100);
@@ -252,7 +244,7 @@ void executeSoilWatering(int soilMoisturePercent) {
 // ===============================================================================
 // PENGIRIMAN MULTIPART HTTPS FOTO KE PYTHONANYWHERE (STREAMING AMAN)
 // ===============================================================================
-bool sendPhotoToPythonAnywhere(camera_fb_t* fb, String &jsonResponse) {
+bool sendPhotoToPythonAnywhere(camera_fb_t* fb, int soilPercent, String &jsonResponse) {
   WiFiClientSecure client;
   client.setInsecure(); // Skip verifikasi sertifikat SSL untuk kemudahan PythonAnywhere
   client.setTimeout(15000);
@@ -273,6 +265,7 @@ bool sendPhotoToPythonAnywhere(camera_fb_t* fb, String &jsonResponse) {
   // Kirim Header HTTP/1.1 POST
   client.printf("POST %s HTTP/1.1\r\n", SERVER_PATH);
   client.printf("Host: %s\r\n", SERVER_HOST);
+  client.printf("X-Soil-Moisture: %d\r\n", soilPercent);
   client.printf("Content-Type: multipart/form-data; boundary=%s\r\n", boundary.c_str());
   client.printf("Content-Length: %u\r\n", totalLen);
   client.println("Connection: close\r\n");
@@ -351,7 +344,7 @@ void processDetectionAndControl() {
 
   // 3. Kirim Foto ke PythonAnywhere & Terima JSON
   String jsonResponse = "";
-  bool uploadSuccess = sendPhotoToPythonAnywhere(fb, jsonResponse);
+  bool uploadSuccess = sendPhotoToPythonAnywhere(fb, soilPercent, jsonResponse);
 
   // Selalu bebaskan memori framebuffer kamera!
   esp_camera_fb_return(fb);
@@ -432,9 +425,6 @@ void setup() {
     Serial.println("[CRITICAL ERROR] Gagal inisialisasi kamera! Sistem dihentikan.");
     while (true) { delay(1000); }
   }
-
-  // Inisialisasi ADC2 untuk Sensor Kelembaban Tanah
-  adc2_config_channel_atten(ADC2_CHANNEL_4, ADC_ATTEN_DB_11);
 
   // Menghubungkan ke Wi-Fi
   connectWiFi();

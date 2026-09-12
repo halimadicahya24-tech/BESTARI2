@@ -18,11 +18,12 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ visualLogs, onSele
     return true;
   });
 
-  const healthScoreMatrix = [
-    { time: '08:00', cam1: 94, cam2: 89, cam3: 96 },
-    { time: '10:30', cam1: 78, cam2: 91, cam3: 95 },
-    { time: '14:00', cam1: 82, cam2: 88, cam3: 92 },
-    { time: '17:00', cam1: 91, cam2: 93, cam3: 97 },
+  const healthTimeline = [
+    { time: '06:00', score: 96, label: 'Sehat' },
+    { time: '08:15', score: 98, label: 'Sehat' },
+    { time: '10:30', score: 78, label: 'Hama' },
+    { time: '14:00', score: 92, label: 'Sehat' },
+    { time: '17:00', score: 95, label: 'Sehat' },
   ];
 
   return (
@@ -36,11 +37,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ visualLogs, onSele
             </div>
             <div>
               <h2 className="font-extrabold text-sm text-[#191C1C] font-hanken">Riwayat Telemetri & Log</h2>
-              <p className="text-[11px] text-[#41484B]">Log Deteksi Hama & Semprot Otomatis</p>
+              <p className="text-[11px] text-[#41484B]">Log Deteksi Hama & Semprot Otomatis (ESP32-CAM)</p>
             </div>
           </div>
           <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#B8EAD7] text-[#1F4F41] border border-[#9FD1BF]">
-            {visualLogs.length} Entri Log
+            {visualLogs.length} Log Realtime
           </span>
         </div>
 
@@ -69,7 +70,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ visualLogs, onSele
       {/* SECTION 2: VISUAL INSPECTION LOG CARDS */}
       <div className="space-y-3">
         <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken uppercase tracking-wider px-1">
-          Inspeksi Visual Kamera
+          Inspeksi Visual ESP32-CAM
         </h3>
 
         <div className="grid grid-cols-2 gap-3">
@@ -99,11 +100,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ visualLogs, onSele
               <div className="p-2.5 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-extrabold text-[#191C1C] font-hanken uppercase">
-                    {log.cam_id}
+                    ESP32-CAM (Cam 1)
                   </span>
                   <ChevronRight className="w-3.5 h-3.5 text-[#71787B] group-hover:translate-x-0.5 transition-transform" />
                 </div>
-                <p className="text-[10px] text-[#41484B] truncate">
+                <p className="text-[10px] text-[#41484B] truncate font-medium">
                   {log.threat_type}
                 </p>
                 <div className="text-[9px] text-[#71787B] font-mono flex items-center justify-between pt-1 border-t border-[#F2F4F3]">
@@ -116,14 +117,14 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ visualLogs, onSele
         </div>
       </div>
 
-      {/* SECTION 3: HEALTH MATRIX (TRANSPOSED MATRIX) */}
+      {/* SECTION 3: HEALTH MATRIX (SINGLE CAMERA TIMELINE) */}
       <div className="bg-white rounded-2xl p-4 border border-[#E1E3E2] shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-[#71787B] tracking-wider uppercase block font-hanken">
-              MATRIKS KESEHATAN TANAMAN
+              MATRIKS SKOR KESEHATAN ESP32-CAM
             </span>
-            <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken">Plant Health Matrix</h3>
+            <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken">Plant Health Matrix (Single Cam)</h3>
           </div>
           <div className="w-8 h-8 rounded-xl bg-[#B8EAD7] flex items-center justify-center text-[#1F4F41]">
             <Leaf className="w-4 h-4" />
@@ -131,36 +132,28 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ visualLogs, onSele
         </div>
 
         <div className="space-y-2 pt-1">
-          {[
-            { name: 'Cam 1', key: 'cam1' as const },
-            { name: 'Cam 2', key: 'cam2' as const },
-            { name: 'Cam 3', key: 'cam3' as const }
-          ].map((cam) => (
-            <div key={cam.name} className="flex items-center gap-2 text-[10px] font-mono">
-              <span className="w-12 text-[#191C1C] font-extrabold text-xs">{cam.name}</span>
-              <div className="grid grid-cols-4 gap-2 flex-1">
-                {healthScoreMatrix.map((item) => {
-                  const score = item[cam.key];
-                  return (
-                    <div
-                      key={item.time}
-                      className={`h-8 rounded-xl flex items-center justify-center font-extrabold text-white text-[11px] shadow-2xs transition-transform hover:scale-105 ${
-                        score < 85 ? 'bg-[#BA1A1A]' : score < 92 ? 'bg-[#305664]' : 'bg-[#163F4C]'
-                      }`}
-                    >
-                      {score}%
-                    </div>
-                  );
-                })}
-              </div>
+          <div className="flex items-center gap-2 text-[10px] font-mono">
+            <span className="w-16 text-[#191C1C] font-extrabold text-[11px]">ESP32-CAM</span>
+            <div className="grid grid-cols-5 gap-1.5 flex-1">
+              {healthTimeline.map((item) => (
+                <div
+                  key={item.time}
+                  className={`h-10 rounded-xl flex flex-col items-center justify-center font-extrabold text-white text-[11px] shadow-2xs transition-transform hover:scale-105 ${
+                    item.score < 85 ? 'bg-[#BA1A1A]' : 'bg-[#305664]'
+                  }`}
+                >
+                  <span>{item.score}%</span>
+                  <span className="text-[8px] font-sans opacity-90">{item.label}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
 
           <div className="flex items-center gap-2 text-[10px] font-bold text-[#71787B] pt-1">
-            <span className="w-12 text-center text-[9px] uppercase tracking-wider text-[#71787B]">Waktu</span>
-            <div className="grid grid-cols-4 gap-2 flex-1 text-center font-mono">
-              {healthScoreMatrix.map((item) => (
-                <span key={item.time} className="bg-[#F2F4F3] py-1 rounded-md text-[#191C1C] font-bold">
+            <span className="w-16 text-center text-[9px] uppercase tracking-wider text-[#71787B]">Waktu</span>
+            <div className="grid grid-cols-5 gap-1.5 flex-1 text-center font-mono">
+              {healthTimeline.map((item) => (
+                <span key={item.time} className="bg-[#F2F4F3] py-1 rounded-md text-[#191C1C] font-bold text-[10px]">
                   {item.time}
                 </span>
               ))}

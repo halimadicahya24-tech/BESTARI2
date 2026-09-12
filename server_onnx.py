@@ -37,7 +37,7 @@ def add_cors_headers(response):
 # Konfigurasi Path Model ONNX & Ambang Batas
 MODEL_PATH = os.environ.get("ONNX_MODEL_PATH", "best.onnx")
 CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", 0.50))
-VERCEL_APP_URL = os.environ.get("VERCEL_APP_URL", "").rstrip("/")
+VERCEL_APP_URL = os.environ.get("VERCEL_APP_URL", "https://bestari-app.vercel.app").rstrip("/")
 
 # Nama Kelas Dataset BESTARI
 CLASS_NAMES = [
@@ -55,9 +55,30 @@ THREAT_KEYWORDS = ["egg", "frass", "larva", "damage", "ulat", "grayak"]
 session = None
 input_name = None
 
+# Global state untuk telemetri & konfigurasi
+latest_telemetry = {
+    "plant_status": "safe",
+    "threat_detected": False,
+    "ulat_grayak_count": 0,
+    "biopesticide_level": 85,
+    "relay_active": False,
+    "temp": 28.5,
+    "last_detection_time": "Belum ada deteksi",
+    "image_base64": None,
+    "detections": []
+}
+
+system_config = {
+    "confidence_threshold": CONF_THRESHOLD,
+    "spray_duration_sec": 5,
+    "auto_spray_enabled": True,
+    "manual_pump_trigger_until": 0
+}
+
 def forward_to_vercel(payload):
     """Mengirim hasil deteksi dan foto ke Vercel App secara asynchronous"""
     if not VERCEL_APP_URL:
+        print("[BESTARI WEBHOOK NOTICE] VERCEL_APP_URL belum diatur. Melewati pengiriman ke Vercel.")
         return
     try:
         url = f"{VERCEL_APP_URL}/api/detections"
@@ -65,12 +86,15 @@ def forward_to_vercel(payload):
         req = urllib.request.Request(
             url,
             data=data,
-            headers={'Content-Type': 'application/json'}
+            headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BESTARI-AI-Server/2.0'
+            }
         )
-        with urllib.request.urlopen(req, timeout=5) as response:
-            print(f"[BESTARI ONNX WEBHOOK] Berhasil terkirim ke Vercel: {response.status}")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            print(f"[BESTARI ONNX WEBHOOK] Berhasil terkirim ke Vercel ({url}): {response.status}")
     except Exception as e:
-        print(f"[BESTARI ONNX WEBHOOK WARN] Gagal mengirim ke Vercel ({url}): {e}")
+        print(f"[BESTARI ONNX WEBHOOK ERROR] Gagal mengirim ke Vercel ({url}): {e}")
 
 def load_onnx_model():
     global session, input_name
@@ -102,7 +126,57 @@ def index():
         "engine": "ONNXRuntime (Ultra-Lightweight)",
         "system": "BESTARI Pest Monitoring AI Server",
         "conf_threshold": CONF_THRESHOLD,
+        "vercel_webhook": VERCEL_APP_URL or "Belum Diatur",
         "classes": CLASS_NAMES
+    })
+
+@app.route('/config', methods=['GET', 'POST'])
+def manage_config():
+    global CONF_THRESHOLD, system_config
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        if 'confidence_threshold' in data:
+            system_config['confidence_threshold'] = float(data['confidence_threshold'])
+            CONF_THRESHOLD = system_config['confidence_threshold']
+        if 'spray_duration_sec' in data:
+            system_config['spray_duration_sec'] = int(data['spray_duration_sec'])
+        if 'auto_spray_enabled' in data:
+            system_config['auto_spray_enabled'] = bool(data['auto_spray_enabled'])
+        return jsonify({"status": "success", "config": system_config})
+    return jsonify({"status": "success", "config": system_config})
+
+@app.route('/control/pump', methods=['POST'])
+def manual_pump_control():
+    data = request.get_json(silent=True) or {}
+    duration = int(data.get('manual_pump_duration_sec', 5))
+    system_config['manual_pump_trigger_until'] = time.time() + duration
+    print(f"[BESTARI ONNX PUMP CONTROL] Pompa manual dipicu selama {duration} detik!")
+    return jsonify({"status": "success", "message": f"Pompa dipicu selama {duration}s", "trigger_until": system_config['manual_pump_trigger_until']})
+
+@app.route('/status/latest', methods=['GET'])
+def get_latest_status():
+    """Endpoint status telemetri sejalan dengan frontend BESTARI."""
+    return jsonify({
+        "plant_status": latest_telemetry["plant_status"],
+        "pest_detected": latest_telemetry["threat_detected"],
+        "ulat_grayak_count": latest_telemetry["ulat_grayak_count"],
+        "biopesticide_level": latest_telemetry["biopesticide_level"],
+        "mode": "auto",
+        "esp32_connected": True,
+        "relay_active": latest_telemetry["relay_active"] or (time.time() < system_config['manual_pump_trigger_until']),
+        "temp": latest_telemetry["temp"],
+        "last_detection_time": latest_telemetry["last_detection_time"],
+        "latest_image": latest_telemetry["image_base64"],
+        "config": system_config,
+        "camera_feeds": [
+          {
+            "cam_id": "Cam 1",
+            "name": "Bedengan Utama Zone A1",
+            "image_url": latest_telemetry["image_base64"] or "/mock_cam1.jpg",
+            "status": "active",
+            "last_capture_time": latest_telemetry["last_detection_time"]
+          }
+        ]
     })
 
 @app.route('/detect', methods=['POST'])
@@ -176,12 +250,36 @@ def detect_pest():
                     is_threat_detected = True
 
         inference_time_ms = round((time.time() - start_time) * 1000, 2)
-        plant_status = "warning" if is_threat_detected else "safe"
-        relay_action = "TRIGGER_SPRAY" if is_threat_detected else "IDLE"
+        
+        # Cek Pemicuan Manual dari Dashboard Web
+        is_manual_active = time.time() < system_config["manual_pump_trigger_until"]
+        should_spray = is_threat_detected or is_manual_active
+
+        plant_status = "warning" if should_spray else "safe"
+        relay_action = "TRIGGER_SPRAY" if should_spray else "IDLE"
+        spray_duration_ms = system_config["spray_duration_sec"] * 1000
 
         # Encode gambar ke Base64 untuk Webhook Vercel & Dashboard UI
         img_b64 = "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")
         current_time_str = time.strftime("%H:%M WIB", time.localtime())
+
+        # Baca Sensor Kelembaban Tanah dari Header ESP32-CAM (jika ada)
+        soil_moisture_header = request.headers.get("X-Soil-Moisture")
+        water_level = int(soil_moisture_header) if (soil_moisture_header and soil_moisture_header.isdigit()) else 60
+
+        global latest_telemetry
+        if should_spray:
+            latest_telemetry["biopesticide_level"] = max(0, latest_telemetry["biopesticide_level"] - 1)
+
+        latest_telemetry.update({
+            "plant_status": plant_status,
+            "threat_detected": is_threat_detected,
+            "ulat_grayak_count": ulat_grayak_count,
+            "relay_active": should_spray,
+            "last_detection_time": f"Hari ini, {current_time_str}",
+            "image_base64": img_b64,
+            "detections": detections
+        })
 
         vercel_payload = {
             "cam_id": "Cam 1",
@@ -189,7 +287,10 @@ def detect_pest():
             "threat_detected": is_threat_detected,
             "ulat_grayak_count": ulat_grayak_count,
             "relay_action": relay_action,
+            "spray_duration_ms": spray_duration_ms,
             "inference_time_ms": inference_time_ms,
+            "water_level": water_level,
+            "biopesticide_level": latest_telemetry["biopesticide_level"],
             "total_detections": len(detections),
             "detections": detections,
             "image_url": img_b64,
@@ -207,6 +308,7 @@ def detect_pest():
             "threat_detected": is_threat_detected,
             "ulat_grayak_count": ulat_grayak_count,
             "relay_action": relay_action,
+            "spray_duration_ms": spray_duration_ms,
             "inference_time_ms": inference_time_ms,
             "total_detections": len(detections),
             "detections": detections
