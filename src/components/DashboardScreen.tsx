@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Camera, AlertTriangle, CheckCircle, Bug, Droplet, Cpu, ShieldCheck, Zap } from 'lucide-react';
 import { SystemStatusResponse, CameraFeed } from '../lib/types';
+import { triggerManualPump } from '../lib/api';
 
 interface DashboardScreenProps {
   systemStatus: SystemStatusResponse;
@@ -23,20 +24,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const isWarning = systemStatus.plant_status === 'warning';
   const activeCam = cameraFeeds.find((c: CameraFeed) => c.cam_id === selectedCamId) || cameraFeeds[0];
 
-  const handleManualSprayToggle = () => {
+  const handleManualSprayToggle = async () => {
     setIsSpraying(true);
+    await triggerManualPump(5);
+
     setSystemStatus((prev: SystemStatusResponse) => ({
       ...prev,
       pump_status: {
         ...prev.pump_status,
-        is_active: !prev.pump_status.is_active
+        is_active: true
       },
       biopesticide_level: Math.max(0, prev.biopesticide_level - 1)
     }));
 
     setTimeout(() => {
       setIsSpraying(false);
-    }, 1500);
+    }, 5000);
   };
 
   const isPumpActive = systemStatus.pump_status?.is_active || isSpraying;

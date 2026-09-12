@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sliders, Cpu, LogOut, CheckCircle2, ShieldCheck, Server, RefreshCw, Globe, ChevronRight } from 'lucide-react';
-import { getApiBaseUrl, setApiBaseUrl, testApiConnection } from '../lib/api';
+import { getApiBaseUrl, setApiBaseUrl, testApiConnection, updateSystemConfig, fetchSystemConfig } from '../lib/api';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -17,6 +17,43 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
   const [apiUrl, setApiUrl] = useState<string>(getApiBaseUrl());
   const [apiStatus, setApiStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
   const [feedbackMessage, setFeedbackMessage] = useState<string>('');
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      const cfg = await fetchSystemConfig();
+      if (cfg) {
+        if (cfg.spray_duration_sec) setSprayDuration(cfg.spray_duration_sec);
+        if (cfg.confidence_threshold) setConfidenceThreshold(Math.round(cfg.confidence_threshold * 100));
+        if (cfg.auto_spray_enabled !== undefined) setAutoSprayEnabled(cfg.auto_spray_enabled);
+        if (cfg.agitate_before_spray !== undefined) setAgitateBeforeSpray(cfg.agitate_before_spray);
+      }
+    };
+    loadConfig();
+  }, []);
+
+  const handleConfigChange = (newConfig: {
+    sprayDuration?: number;
+    confidenceThreshold?: number;
+    autoSprayEnabled?: boolean;
+    agitateBeforeSpray?: boolean;
+  }) => {
+    const duration = newConfig.sprayDuration ?? sprayDuration;
+    const confidence = newConfig.confidenceThreshold ?? confidenceThreshold;
+    const autoSpray = newConfig.autoSprayEnabled ?? autoSprayEnabled;
+    const agitate = newConfig.agitateBeforeSpray ?? agitateBeforeSpray;
+
+    if (newConfig.sprayDuration !== undefined) setSprayDuration(duration);
+    if (newConfig.confidenceThreshold !== undefined) setConfidenceThreshold(confidence);
+    if (newConfig.autoSprayEnabled !== undefined) setAutoSprayEnabled(autoSpray);
+    if (newConfig.agitateBeforeSpray !== undefined) setAgitateBeforeSpray(agitate);
+
+    updateSystemConfig({
+      spray_duration_sec: duration,
+      confidence_threshold: confidence / 100.0,
+      auto_spray_enabled: autoSpray,
+      agitate_before_spray: agitate,
+    });
+  };
 
   const handleTestConnection = async () => {
     setApiStatus('testing');
@@ -129,7 +166,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
             <span className="text-[10px] text-[#71787B]">Picu valve saat YOLOv8 mendeteksi hama</span>
           </div>
           <button
-            onClick={() => setAutoSprayEnabled(!autoSprayEnabled)}
+            onClick={() => handleConfigChange({ autoSprayEnabled: !autoSprayEnabled })}
             className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
               autoSprayEnabled ? 'bg-[#305664]' : 'bg-[#C1C7CB]'
             }`}
@@ -147,7 +184,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
             <span className="text-[10px] text-[#71787B]">Aduk spora Beauveria sebelum penyemprotan</span>
           </div>
           <button
-            onClick={() => setAgitateBeforeSpray(!agitateBeforeSpray)}
+            onClick={() => handleConfigChange({ agitateBeforeSpray: !agitateBeforeSpray })}
             className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
               agitateBeforeSpray ? 'bg-[#305664]' : 'bg-[#C1C7CB]'
             }`}
@@ -169,7 +206,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
             min={1}
             max={10}
             value={sprayDuration}
-            onChange={(e) => setSprayDuration(Number(e.target.value))}
+            onChange={(e) => handleConfigChange({ sprayDuration: Number(e.target.value) })}
             className="w-full accent-[#305664]"
           />
         </div>
@@ -185,7 +222,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
             min={30}
             max={90}
             value={confidenceThreshold}
-            onChange={(e) => setConfidenceThreshold(Number(e.target.value))}
+            onChange={(e) => handleConfigChange({ confidenceThreshold: Number(e.target.value) })}
             className="w-full accent-[#305664]"
           />
         </div>

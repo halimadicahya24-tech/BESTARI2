@@ -141,11 +141,16 @@ def detect_pest():
                     ulat_grayak_count += 1
                     is_threat_detected = True
 
+        # Cek Pemicuan Manual dari Dashboard Web
+        is_manual_active = time.time() < system_config["manual_pump_trigger_until"]
+        should_spray = is_threat_detected or is_manual_active
+
         # Tentukan status tanaman berdasarkan deteksi hama
-        plant_status = "warning" if is_threat_detected else "safe"
+        plant_status = "warning" if should_spray else "safe"
         
-        # Keputusan otomatis untuk Relay Mini Pump Biopestisida (GPIO 14 ESP32)
-        relay_action = "TRIGGER_SPRAY" if is_threat_detected else "IDLE"
+        # Keputusan untuk Relay Mini Pump Biopestisida
+        relay_action = "TRIGGER_SPRAY" if should_spray else "IDLE"
+        spray_duration_ms = system_config["spray_duration_sec"] * 1000
 
         # Encode gambar ke Base64 untuk Webhook Vercel & Dashboard UI
         img_b64 = "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")
@@ -157,7 +162,7 @@ def detect_pest():
             "plant_status": plant_status,
             "threat_detected": is_threat_detected,
             "ulat_grayak_count": ulat_grayak_count,
-            "relay_active": is_threat_detected,
+            "relay_active": should_spray,
             "last_detection_time": f"Hari ini, {current_time_str}",
             "image_base64": img_b64,
             "detections": detections
@@ -170,6 +175,7 @@ def detect_pest():
             "threat_detected": is_threat_detected,
             "ulat_grayak_count": ulat_grayak_count,
             "relay_action": relay_action,
+            "spray_duration_ms": spray_duration_ms,
             "inference_time_ms": inference_time_ms,
             "total_detections": len(detections),
             "detections": detections,
@@ -188,6 +194,7 @@ def detect_pest():
             "threat_detected": is_threat_detected,
             "ulat_grayak_count": ulat_grayak_count,
             "relay_action": relay_action,
+            "spray_duration_ms": spray_duration_ms,
             "inference_time_ms": inference_time_ms,
             "total_detections": len(detections),
             "detections": detections
@@ -195,6 +202,37 @@ def detect_pest():
 
     except Exception as e:
         return jsonify({"error": f"Gagal memproses gambar: {str(e)}"}), 500
+
+# Global system config
+system_config = {
+    "confidence_threshold": CONF_THRESHOLD,
+    "spray_duration_sec": 5,
+    "auto_spray_enabled": True,
+    "manual_pump_trigger_until": 0
+}
+
+@app.route('/config', methods=['GET', 'POST'])
+def manage_config():
+    global CONF_THRESHOLD, system_config
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        if 'confidence_threshold' in data:
+            system_config['confidence_threshold'] = float(data['confidence_threshold'])
+            CONF_THRESHOLD = system_config['confidence_threshold']
+        if 'spray_duration_sec' in data:
+            system_config['spray_duration_sec'] = int(data['spray_duration_sec'])
+        if 'auto_spray_enabled' in data:
+            system_config['auto_spray_enabled'] = bool(data['auto_spray_enabled'])
+        return jsonify({"status": "success", "config": system_config})
+    return jsonify({"status": "success", "config": system_config})
+
+@app.route('/control/pump', methods=['POST'])
+def manual_pump_control():
+    data = request.get_json(silent=True) or {}
+    duration = int(data.get('manual_pump_duration_sec', 5))
+    system_config['manual_pump_trigger_until'] = time.time() + duration
+    print(f"[BESTARI PUMP CONTROL] Pompa manual dipicu selama {duration} detik!")
+    return jsonify({"status": "success", "message": f"Pompa dipicu selama {duration}s", "trigger_until": system_config['manual_pump_trigger_until']})
 
 @app.route('/status/latest', methods=['GET'])
 def get_latest_status():
@@ -206,10 +244,11 @@ def get_latest_status():
         "biopesticide_level": latest_telemetry["biopesticide_level"],
         "mode": "auto",
         "esp32_connected": True,
-        "relay_active": latest_telemetry["relay_active"],
+        "relay_active": latest_telemetry["relay_active"] or (time.time() < system_config['manual_pump_trigger_until']),
         "temp": latest_telemetry["temp"],
         "last_detection_time": latest_telemetry["last_detection_time"],
         "latest_image": latest_telemetry["image_base64"],
+        "config": system_config,
         "camera_feeds": [
           {
             "cam_id": "Cam 1",

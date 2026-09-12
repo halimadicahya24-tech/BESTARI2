@@ -127,4 +127,78 @@ export async function sendTelemetry(sensorPayload: {
   return { success: true };
 }
 
+export async function fetchSystemConfig() {
+  try {
+    const res = await fetch('/api/config', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      return data.config;
+    }
+  } catch (err) {
+    console.warn('Fetch config fallback:', err);
+  }
+  return null;
+}
+
+export async function updateSystemConfig(configPayload: {
+  spray_duration_sec?: number;
+  confidence_threshold?: number;
+  auto_spray_enabled?: boolean;
+  agitate_before_spray?: boolean;
+}) {
+  // Sync to Vercel API
+  try {
+    await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(configPayload)
+    });
+  } catch (err) {
+    console.warn('Update config Vercel API fallback:', err);
+  }
+
+  // Also sync directly to AI Server if available
+  const url = getApiBaseUrl().replace(/\/$/, '');
+  try {
+    await fetch(`${url}/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(configPayload)
+    });
+  } catch (err) {
+    // Ignore if local AI Server is unreachable
+  }
+}
+
+export async function triggerManualPump(durationSec: number = 5) {
+  const payload = {
+    manual_pump_active: true,
+    manual_pump_duration_sec: durationSec
+  };
+
+  // Sync to Vercel API
+  try {
+    await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.warn('Manual pump Vercel API fallback:', err);
+  }
+
+  // Also trigger local AI Server directly
+  const url = getApiBaseUrl().replace(/\/$/, '');
+  try {
+    await fetch(`${url}/control/pump`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    // Ignore if offline
+  }
+}
+
+
 

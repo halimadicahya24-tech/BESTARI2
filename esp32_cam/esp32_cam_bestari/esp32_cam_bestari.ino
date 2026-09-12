@@ -39,7 +39,7 @@ const char* WIFI_PASSWORD = "8765432111";     // Ganti dengan Password Wi-Fi And
 
 // Host SSL & Path Server PythonAnywhere Anda
 // Contoh jika URL Anda: "https://bestari-ai.pythonanywhere.com/detect"
-const char* SERVER_HOST   = "username.pythonanywhere.com"; // Ganti dengan username PythonAnywhere Anda
+const char* SERVER_HOST   = "https://halimadi.pythonanywhere.com/"; // Ganti dengan username PythonAnywhere Anda
 const int   SERVER_PORT   = 443;                          // Port 443 untuk HTTPS
 const char* SERVER_PATH   = "/detect";                    // Endpoint Flask
 
@@ -202,11 +202,12 @@ int readSoilMoisturePercentage(int &rawVal) {
 // EKSEKUSI AKTUATOR DENGAN PERLINDUNGAN SAFEGUARD
 // ===============================================================================
 
-// Action A: Menyemprot Bio-Pestisida (Hama Terdeteksi)
-void executeBioPesticideSpraying(int ulatCount) {
+// Action A: Menyemprot Bio-Pestisida (Hama Terdeteksi / Pemicu Manual)
+void executeBioPesticideSpraying(int ulatCount, unsigned long customDurationMs = 0) {
+  unsigned long duration = (customDurationMs > 0) ? customDurationMs : SPRAY_BIOPESTICIDE_MS;
+
   Serial.println("\n=========================================================");
-  Serial.printf("⚠️ TERDETEKSI HAMA ULAT GRAYAK (%d Ekor/Kerusakan)!\n", ulatCount);
-  Serial.println("   --> Menjalankan Mode Penyemprotan BIO-PESTISIDA");
+  Serial.printf("⚠️ MENJALANKAN PENYEMPROTAN BIO-PESTISIDA (Durasi: %lu ms)!\n", duration);
   Serial.println("=========================================================");
 
   // Step 1: Menyalakan Dinamo Pengaduk (GPIO 14)
@@ -217,7 +218,7 @@ void executeBioPesticideSpraying(int ulatCount) {
   // Step 2: Menyalakan Pompa Semprot (GPIO 15)
   Serial.println("[AKTUATOR] STEP 2: Menyalakan Pompa Semprot Biopestisida (GPIO 15)...");
   digitalWrite(PUMP_RELAY_PIN, RELAY_ON);
-  delay(SPRAY_BIOPESTICIDE_MS);
+  delay(duration);
 
   // Step 3: Mematikan Seluruh Aktuator
   Serial.println("[AKTUATOR] STEP 3: Selesai. Mematikan Pompa & Dinamo...");
@@ -369,6 +370,7 @@ void processDetectionAndControl() {
   // 4. Parsing JSON dari Server AI
   bool threatDetected = false;
   int ulatCount = 0;
+  unsigned long customSprayDurationMs = 0;
 
   #if ARDUINOJSON_VERSION_MAJOR >= 7
     JsonDocument doc;
@@ -380,11 +382,12 @@ void processDetectionAndControl() {
   if (!error) {
     threatDetected = doc["threat_detected"] | false;
     ulatCount = doc["ulat_grayak_count"] | 0;
+    customSprayDurationMs = doc["spray_duration_ms"] | 0;
     const char* relayAction = doc["relay_action"] | "IDLE";
     const char* plantStatus = doc["plant_status"] | "safe";
 
-    Serial.printf("[ANALISIS AI] Status: %s | Ulat: %d | Aksi AI: %s\n",
-                  plantStatus, ulatCount, relayAction);
+    Serial.printf("[ANALISIS AI] Status: %s | Ulat: %d | Aksi AI: %s | Durasi: %lu ms\n",
+                  plantStatus, ulatCount, relayAction, customSprayDurationMs);
 
     if (String(relayAction) == "TRIGGER_SPRAY" || ulatCount > 0) {
       threatDetected = true;
@@ -396,7 +399,7 @@ void processDetectionAndControl() {
 
   // 5. Keputusan Aktuator Otomatis
   if (threatDetected) {
-    executeBioPesticideSpraying(ulatCount);
+    executeBioPesticideSpraying(ulatCount, customSprayDurationMs);
   } else if (isSoilDry) {
     executeSoilWatering(soilPercent);
   } else {
