@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Cpu, Server, Sliders, ShieldCheck, LogOut, CheckCircle2, RefreshCw, Zap, BellRing } from 'lucide-react';
+import { Sliders, Cpu, LogOut, CheckCircle2, ShieldCheck, Server, RefreshCw, Globe, ChevronRight } from 'lucide-react';
+import { getApiBaseUrl, setApiBaseUrl, testApiConnection } from '../lib/api';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -9,147 +10,128 @@ interface SettingsScreenProps {
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpenPinouts }) => {
-  const [apiUrl, setApiUrl] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('bestari_api_url') || 'http://localhost:5000';
-    }
-    return 'http://localhost:5000';
-  });
-  const [apiStatus, setApiStatus] = useState<'connected' | 'testing' | 'offline'>('offline');
+  const [autoSprayEnabled, setAutoSprayEnabled] = useState<boolean>(true);
+  const [agitateBeforeSpray, setAgitateBeforeSpray] = useState<boolean>(true);
+  const [sprayDuration, setSprayDuration] = useState<number>(3);
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(75);
+  const [apiUrl, setApiUrl] = useState<string>(getApiBaseUrl());
+  const [apiStatus, setApiStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
   const [feedbackMessage, setFeedbackMessage] = useState<string>('');
-  const [sprayDuration, setSprayDuration] = useState(3);
-  const [confidenceThreshold, setConfidenceThreshold] = useState(50);
-  const [autoSprayEnabled, setAutoSprayEnabled] = useState(true);
-  const [agitateBeforeSpray, setAgitateBeforeSpray] = useState(true);
 
   const handleTestConnection = async () => {
     setApiStatus('testing');
-    setFeedbackMessage('Mencoba terhubung...');
+    setFeedbackMessage('Menghubungkan ke Flask ESP32...');
     
-    // Save URL to localStorage first
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bestari_api_url', apiUrl.trim());
-    }
+    setApiBaseUrl(apiUrl);
+    const isLive = await testApiConnection();
 
-    const { testApiConnection } = await import('../lib/api');
-    const result = await testApiConnection(apiUrl);
-
-    if (result.success) {
+    if (isLive) {
       setApiStatus('connected');
-      setFeedbackMessage('✅ Terhubung! Data ESP32 akan ditampilkan secara live.');
+      setFeedbackMessage('Terhubung ke ESP32 Live Server!');
     } else {
-      setApiStatus('offline');
-      setFeedbackMessage(`⚠️ ${result.message}`);
+      setApiStatus('failed');
+      setFeedbackMessage('Tidak dapat terhubung. Menggunakan Mode Standalone Demo.');
     }
   };
 
   return (
-    <div className="pb-28 pt-3 px-4 max-w-md mx-auto space-y-4 font-sans bg-[#EFF4F2] min-h-screen">
-      {/* Title */}
-      <h2 className="text-xl font-extrabold text-[#1E4852] tracking-tight">System Settings & IoT Config</h2>
-
-      {/* SECTION 1: HARDWARE & PINOUT SPECIFICATION */}
-      <div className="bg-white rounded-2xl p-4 border border-[#D8E4E0] shadow-sm space-y-3">
+    <div className="p-4 space-y-4 pb-24 bg-[#F8FAF9] animate-fade-in font-sans">
+      {/* SECTION 1: HARDWARE GPIO & PINOUT BANNER */}
+      <div className="bg-white rounded-2xl p-4 border border-[#E1E3E2] shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#EFF4F2] flex items-center justify-center text-[#1E4852]">
+            <div className="w-8 h-8 rounded-xl bg-[#305664] flex items-center justify-center text-white shadow-2xs">
               <Cpu className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-[#1E4852]">ESP32-CAM Hardware Node</h3>
-              <p className="text-[11px] text-[#6B878C] font-semibold">Relay & Agitator Pinout Mapping</p>
+              <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken">Konfigurasi Pinout ESP32-CAM</h3>
+              <p className="text-[11px] text-[#41484B]">Pemetaan Hardware & Sensor Solenoid</p>
             </div>
           </div>
           <button
             onClick={onOpenPinouts}
-            className="bg-[#2A5B64] hover:bg-[#1E4852] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition-colors"
+            className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#305664] text-white hover:bg-[#163F4C] transition-colors flex items-center gap-1 shadow-2xs"
           >
-            Pinout Schema
+            <span>Detail Pinout</span>
+            <ChevronRight className="w-3 h-3" />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-xs font-mono pt-1">
-          <div className="bg-[#F7FAF9] p-2.5 rounded-xl border border-[#E5ECE9]">
-            <span className="text-[10px] text-[#6B878C] font-sans font-bold block">RELAY PIN</span>
-            <span className="text-[#1E4852] font-bold">GPIO 14 (Pump/Agitator)</span>
+        <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+          <div className="bg-[#F2F4F3] p-2.5 rounded-xl border border-[#E1E3E2]">
+            <span className="text-[9px] text-[#71787B] font-sans font-bold block">SOLENOID VALVE</span>
+            <span className="text-[#163F4C] font-bold">GPIO 14 (RELAY 1)</span>
           </div>
-          <div className="bg-[#F7FAF9] p-2.5 rounded-xl border border-[#E5ECE9]">
-            <span className="text-[10px] text-[#6B878C] font-sans font-bold block">CAMERA CLOCK</span>
-            <span className="text-[#1E4852] font-bold">XCLK GPIO 0</span>
+          <div className="bg-[#F2F4F3] p-2.5 rounded-xl border border-[#E1E3E2]">
+            <span className="text-[9px] text-[#71787B] font-sans font-bold block">DINAMO PENGADUK</span>
+            <span className="text-[#163F4C] font-bold">GPIO 12 (RELAY 2)</span>
           </div>
         </div>
       </div>
 
-      {/* SECTION 2: BACKEND API CONFIGURATION */}
-      <div className="bg-white rounded-2xl p-4 border border-[#D8E4E0] shadow-sm space-y-3">
+      {/* SECTION 2: FLASK BACKEND CONFIG */}
+      <div className="bg-white rounded-2xl p-4 border border-[#E1E3E2] shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#EFF4F2] flex items-center justify-center text-[#1E4852]">
+            <div className="w-8 h-8 rounded-xl bg-[#F2F4F3] flex items-center justify-center text-[#305664]">
               <Server className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-[#1E4852]">Pencocokan API Flask ESP32</h3>
-              <p className="text-[11px] text-[#6B878C] font-semibold">Konfigurasi IP/URL Server Live Data</p>
+              <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken">IP Server Flask ESP32</h3>
+              <p className="text-[11px] text-[#41484B]">Pengaturan Endpoint Live Telemetry</p>
             </div>
           </div>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-            apiStatus === 'connected' ? 'bg-[#D9F7EC] text-[#2D8A68]' : apiStatus === 'testing' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+            apiStatus === 'connected' ? 'bg-[#B8EAD7] text-[#1F4F41]' : apiStatus === 'testing' ? 'bg-blue-100 text-blue-800' : 'bg-[#FEF3C7] text-[#92400E]'
           }`}>
-            {apiStatus === 'testing' ? 'Testing...' : apiStatus === 'connected' ? '● Connected' : '○ Standalone / Offline'}
+            {apiStatus === 'testing' ? 'Testing...' : apiStatus === 'connected' ? 'Connected' : 'Standalone'}
           </span>
         </div>
 
         <div className="space-y-2">
-          <label className="block text-[11px] font-bold text-[#6B878C] uppercase tracking-wider">
-            URL / IP Address Flask ESP32
-          </label>
           <div className="flex gap-2">
             <input
               type="text"
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
-              placeholder="http://192.168.1.50:5000 atau https://api.anda.com"
-              className="flex-1 bg-[#F7FAF9] border border-[#D8E4E0] rounded-xl px-3 py-2 text-xs font-mono text-[#1E4852] focus:outline-none focus:border-[#2A5B64]"
+              placeholder="http://192.168.1.50:5000"
+              className="flex-1 bg-[#F2F4F3] border border-[#C1C7CB] focus:border-[#305664] rounded-xl px-3 py-2 text-xs font-mono text-[#191C1C] outline-none"
             />
             <button
               onClick={handleTestConnection}
-              className="bg-[#2A5B64] hover:bg-[#1E4852] text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
+              className="bg-[#305664] hover:bg-[#163F4C] text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${apiStatus === 'testing' ? 'animate-spin' : ''}`} />
-              <span>Tes ESP32</span>
+              <span>Tes URL</span>
             </button>
           </div>
           {feedbackMessage && (
-            <p className={`text-[11px] font-medium mt-1 ${apiStatus === 'connected' ? 'text-emerald-600' : 'text-amber-700'}`}>
+            <p className={`text-[11px] font-medium ${apiStatus === 'connected' ? 'text-[#386758]' : 'text-[#D97706]'}`}>
               {feedbackMessage}
             </p>
           )}
-          <p className="text-[10px] text-[#6B878C]">
-            💡 Masukkan IP Flask ESP32 lokal (misal: <code>http://192.168.1.100:5000</code>) atau domain cloud Anda. Jika belum terhubung, web akan otomatis menyajikan Mode Standalone.
-          </p>
         </div>
       </div>
 
-
-      {/* SECTION 3: AUTOMATION & SPRAY PARAMETERS */}
-      <div className="bg-white rounded-2xl p-4 border border-[#D8E4E0] shadow-sm space-y-4">
+      {/* SECTION 3: AUTOMATION PARAMETERS */}
+      <div className="bg-white rounded-2xl p-4 border border-[#E1E3E2] shadow-2xs space-y-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#EFF4F2] flex items-center justify-center text-[#1E4852]">
+          <div className="w-8 h-8 rounded-xl bg-[#F2F4F3] flex items-center justify-center text-[#305664]">
             <Sliders className="w-4 h-4" />
           </div>
-          <h3 className="text-sm font-extrabold text-[#1E4852]">Pesticide Control Settings</h3>
+          <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken">Pengaturan Presisi Semprot</h3>
         </div>
 
         {/* Auto Spray Toggle */}
-        <div className="flex items-center justify-between py-1 border-b border-[#E5ECE9]">
+        <div className="flex items-center justify-between py-1 border-b border-[#F2F4F3]">
           <div>
-            <span className="text-xs font-bold text-[#1E4852] block">Auto-Spray Execution</span>
-            <span className="text-[10px] text-[#6B878C]">Trigger pump automatically on YOLOv8 warning</span>
+            <span className="text-xs font-extrabold text-[#191C1C] block font-hanken">Penyemprotan Otomatis</span>
+            <span className="text-[10px] text-[#71787B]">Picu valve saat YOLOv8 mendeteksi hama</span>
           </div>
           <button
             onClick={() => setAutoSprayEnabled(!autoSprayEnabled)}
             className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
-              autoSprayEnabled ? 'bg-[#2A5B64]' : 'bg-[#D0DDD8]'
+              autoSprayEnabled ? 'bg-[#305664]' : 'bg-[#C1C7CB]'
             }`}
           >
             <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
@@ -158,16 +140,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
           </button>
         </div>
 
-        {/* Agitator Dinamo Pre-mix Toggle */}
-        <div className="flex items-center justify-between py-1 border-b border-[#E5ECE9]">
+        {/* Pre-mix Agitator */}
+        <div className="flex items-center justify-between py-1 border-b border-[#F2F4F3]">
           <div>
-            <span className="text-xs font-bold text-[#1E4852] block">Pre-spray Agitator Dinamo</span>
-            <span className="text-[10px] text-[#6B878C]">Mix Beauveria spores before pumping</span>
+            <span className="text-xs font-extrabold text-[#191C1C] block font-hanken">Pengaduk Dinamo Pre-mix</span>
+            <span className="text-[10px] text-[#71787B]">Aduk spora Beauveria sebelum penyemprotan</span>
           </div>
           <button
             onClick={() => setAgitateBeforeSpray(!agitateBeforeSpray)}
             className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
-              agitateBeforeSpray ? 'bg-[#2A5B64]' : 'bg-[#D0DDD8]'
+              agitateBeforeSpray ? 'bg-[#305664]' : 'bg-[#C1C7CB]'
             }`}
           >
             <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
@@ -176,11 +158,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
           </button>
         </div>
 
-        {/* Spray Duration Slider */}
+        {/* Spray Duration */}
         <div className="space-y-1 pt-1">
           <div className="flex justify-between text-xs font-bold">
-            <span className="text-[#1E4852]">Spray Pulse Duration</span>
-            <span className="text-[#2A5B64] font-mono">{sprayDuration} Seconds</span>
+            <span className="text-[#191C1C]">Durasi Semprot Presisi</span>
+            <span className="text-[#305664] font-mono">{sprayDuration} Detik</span>
           </div>
           <input
             type="range"
@@ -188,19 +170,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
             max={10}
             value={sprayDuration}
             onChange={(e) => setSprayDuration(Number(e.target.value))}
-            className="w-full accent-[#2A5B64]"
+            className="w-full accent-[#305664]"
           />
-          <div className="flex justify-between text-[10px] text-[#6B878C]">
-            <span>1s (Pulse)</span>
-            <span>10s (Heavy)</span>
-          </div>
         </div>
 
         {/* Confidence Threshold Slider */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-bold">
-            <span className="text-[#1E4852]">AI YOLOv8 Confidence Threshold</span>
-            <span className="text-[#2A5B64] font-mono">{confidenceThreshold}%</span>
+            <span className="text-[#191C1C]">Ambang Batas YOLO Confidence</span>
+            <span className="text-[#305664] font-mono">{confidenceThreshold}%</span>
           </div>
           <input
             type="range"
@@ -208,38 +186,34 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
             max={90}
             value={confidenceThreshold}
             onChange={(e) => setConfidenceThreshold(Number(e.target.value))}
-            className="w-full accent-[#2A5B64]"
+            className="w-full accent-[#305664]"
           />
-          <div className="flex justify-between text-[10px] text-[#6B878C]">
-            <span>30% (Sensitive)</span>
-            <span>90% (Strict)</span>
-          </div>
         </div>
       </div>
 
       {/* SECTION 4: USER & TEAM CREDIT */}
-      <div className="bg-white rounded-2xl p-4 border border-[#D8E4E0] shadow-sm space-y-3">
+      <div className="bg-white rounded-2xl p-4 border border-[#E1E3E2] shadow-2xs space-y-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#1E4852] text-[#A8E6CF] font-extrabold flex items-center justify-center text-sm shadow-sm">
+          <div className="w-10 h-10 rounded-full bg-[#163F4C] text-[#A3CADA] font-extrabold flex items-center justify-center text-sm shadow-2xs font-hanken">
             FM
           </div>
           <div>
-            <h4 className="text-sm font-bold text-[#1E4852]">Fajrin Al Majid (Ketua Tim)</h4>
-            <p className="text-[11px] text-[#6B878C]">Tim BESTARI - SMAN Sumatera Selatan</p>
+            <h4 className="text-xs font-extrabold text-[#191C1C] font-hanken">Fajrin Al Majid (Ketua Tim)</h4>
+            <p className="text-[10px] text-[#71787B]">Tim BESTARI - SMAN Sumatera Selatan</p>
           </div>
         </div>
 
-        <div className="bg-[#F7FAF9] p-3 rounded-xl border border-[#E5ECE9] text-[11px] text-[#6B878C] space-y-1">
-          <p className="font-semibold text-[#1E4852]">Samsung Solve for Tomorrow 2026</p>
-          <p>Anggota: Faizahra Safina Yuwono, Halim Adi Cahya, Sri Puji Astuti</p>
+        <div className="bg-[#F2F4F3] p-3 rounded-xl border border-[#E1E3E2] text-[11px] text-[#41484B] space-y-1">
+          <p className="font-bold text-[#163F4C] font-hanken">Samsung Solve for Tomorrow 2026</p>
+          <p className="text-[10px]">Anggota: Faizahra Safina Yuwono, Halim Adi Cahya, Sri Puji Astuti</p>
         </div>
 
         <button
           onClick={onLogout}
-          className="w-full bg-[#FDE8E8] hover:bg-[#FCD4D4] text-[#D9534F] font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors text-xs"
+          className="w-full bg-[#FFDAD6] hover:bg-[#FFB4AB] text-[#BA1A1A] font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors text-xs font-hanken shadow-2xs"
         >
           <LogOut className="w-4 h-4" />
-          <span>Sign Out / Lock App</span>
+          <span>Keluar / Lock App</span>
         </button>
       </div>
     </div>

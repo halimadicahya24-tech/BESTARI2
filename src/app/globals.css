@@ -1,25 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    background-color: #EFF4F2;
-    color: #1E4852;
+    background-color: #F8FAF9;
+    color: #191C1C;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Hanken Grotesk', 'Inter', sans-serif;
   }
 }
 
-/* Custom animations & scrollbars */
 .scrollbar-thin::-webkit-scrollbar {
   height: 4px;
+  width: 4px;
 }
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: #E5ECE9;
+  background: #F2F4F3;
   border-radius: 4px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #2A5B64;
+  background: #305664;
   border-radius: 4px;
 }
 

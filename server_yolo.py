@@ -19,6 +19,11 @@ from flask_cors import CORS
 from PIL import Image
 import numpy as np
 
+import base64
+import threading
+import urllib.request
+import json
+
 # Cek & Load Ultralytics YOLO
 try:
     from ultralytics import YOLO
@@ -32,9 +37,38 @@ CORS(app)  # Izinkan Cross-Origin Requests dari Aplikasi Web BESTARI
 MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "runs/bestari_yolo/bestari_ulat_grayak_model/weights/best.pt")
 FALLBACK_MODEL_PATH = "yolov8n.pt"
 CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", 0.65)) # Ambang batas kepastian deteksi (default: 65%)
+VERCEL_APP_URL = os.environ.get("VERCEL_APP_URL", "").rstrip("/") # URL Aplikasi Next.js di Vercel
 
-# Global variable model
+# Global variable model & telemetri terbaru
 model = None
+latest_telemetry = {
+    "plant_status": "safe",
+    "threat_detected": False,
+    "ulat_grayak_count": 0,
+    "biopesticide_level": 85,
+    "relay_active": False,
+    "temp": 28.5,
+    "last_detection_time": "Belum ada deteksi",
+    "image_base64": None,
+    "detections": []
+}
+
+def forward_to_vercel(payload):
+    """Mengirim hasil deteksi dan foto ke Vercel App secara asynchronous"""
+    if not VERCEL_APP_URL:
+        return
+    try:
+        url = f"{VERCEL_APP_URL}/api/detections"
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            print(f"[BESTARI WEBHOOK] Berhasil terkirim ke Vercel: {response.status}")
+    except Exception as e:
+        print(f"[BESTARI WEBHOOK WARN] Gagal mengirim ke Vercel ({url}): {e}")
 
 def load_yolo_model():
     global model
@@ -52,7 +86,8 @@ def index():
         "status": "online",
         "system": "BESTARI Pest Monitoring AI Server (Samsung Solve for Tomorrow 2026)",
         "model_loaded": MODEL_PATH if Path(MODEL_PATH).exists() else FALLBACK_MODEL_PATH,
-        "conf_threshold": CONF_THRESHOLD
+        "conf_threshold": CONF_THRESHOLD,
+        "vercel_webhook": VERCEL_APP_URL or "Belum Diatur (Set VERCEL_APP_URL env var)"
     })
 
 @app.route('/detect', methods=['POST'])
@@ -112,6 +147,41 @@ def detect_pest():
         # Keputusan otomatis untuk Relay Mini Pump Biopestisida (GPIO 14 ESP32)
         relay_action = "TRIGGER_SPRAY" if is_threat_detected else "IDLE"
 
+        # Encode gambar ke Base64 untuk Webhook Vercel & Dashboard UI
+        img_b64 = "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")
+        current_time_str = time.strftime("%H:%M WIB", time.localtime())
+
+        # Update Telemetri Global In-Memory
+        global latest_telemetry
+        latest_telemetry.update({
+            "plant_status": plant_status,
+            "threat_detected": is_threat_detected,
+            "ulat_grayak_count": ulat_grayak_count,
+            "relay_active": is_threat_detected,
+            "last_detection_time": f"Hari ini, {current_time_str}",
+            "image_base64": img_b64,
+            "detections": detections
+        })
+
+        # Payload Lengkap ke Vercel App
+        vercel_payload = {
+            "cam_id": "Cam 1",
+            "plant_status": plant_status,
+            "threat_detected": is_threat_detected,
+            "ulat_grayak_count": ulat_grayak_count,
+            "relay_action": relay_action,
+            "inference_time_ms": inference_time_ms,
+            "total_detections": len(detections),
+            "detections": detections,
+            "image_url": img_b64,
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "formatted_time": current_time_str
+        }
+
+        # Kirim ke Vercel di Background Thread (agar ESP32 tidak menunggu lama)
+        if VERCEL_APP_URL:
+            threading.Thread(target=forward_to_vercel, args=(vercel_payload,), daemon=True).start()
+
         return jsonify({
             "status": "success",
             "plant_status": plant_status,
@@ -130,18 +200,24 @@ def detect_pest():
 def get_latest_status():
     """Endpoint status telemetri sejalan dengan frontend BESTARI."""
     return jsonify({
-        "plant_status": "safe",
-        "pest_detected": False,
-        "biopesticide_level": 84,
+        "plant_status": latest_telemetry["plant_status"],
+        "pest_detected": latest_telemetry["threat_detected"],
+        "ulat_grayak_count": latest_telemetry["ulat_grayak_count"],
+        "biopesticide_level": latest_telemetry["biopesticide_level"],
         "mode": "auto",
         "esp32_connected": True,
-        "relay_active": False,
-        "temp": 28.5,
-        "last_detection_time": "Hari ini, 07:30 WIB",
+        "relay_active": latest_telemetry["relay_active"],
+        "temp": latest_telemetry["temp"],
+        "last_detection_time": latest_telemetry["last_detection_time"],
+        "latest_image": latest_telemetry["image_base64"],
         "camera_feeds": [
-          {"cam_id": "Cam 1", "image_url": "/mock_cam1.jpg", "status": "active"},
-          {"cam_id": "Cam 2", "image_url": "/mock_cam2.jpg", "status": "active"},
-          {"cam_id": "Cam 3", "image_url": "/mock_cam3.jpg", "status": "active"}
+          {
+            "cam_id": "Cam 1",
+            "name": "Bedengan Utama Zone A1",
+            "image_url": latest_telemetry["image_base64"] or "/mock_cam1.jpg",
+            "status": "active",
+            "last_capture_time": latest_telemetry["last_detection_time"]
+          }
         ]
     })
 

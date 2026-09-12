@@ -64,6 +64,8 @@ export interface SystemStatusResponse {
   confidence: number;
   biopesticide_level: number;
   biopesticide_capacity_liters: number;
+  water_level?: number;
+  water_capacity_liters?: number;
   temp: number;
   humidity?: number;
   active_node: string;

@@ -1,14 +1,15 @@
-# BESTARI - Dataset Configuration for YOLOv8/YOLO11
-# Projek Samsung Solve for Tomorrow 2026 - Deteksi Hama Ulat Grayak
-
+# BESTARI - Roboflow Fall Armyworm Dataset Configuration
 path: ./dataset     # Root direktori dataset
 train: train/images # Path gambar training
 val: valid/images   # Path gambar validasi
-test: test/images   # Path gambar testing (opsional)
+test: test/images   # Path gambar testing
 
-# Jumlah Kelas & Naming Label
-nc: 3
-names:
-  0: ulat_grayak   # Hama Ulat Grayak (Spodoptera frugiperda)
-  1: daun_sehat    # Daun tanaman segar & sehat
-  2: daun_rusak    # Daun terkena gigitan/kerusakan akibat ulat
+nc: 6
+names: ['fall-armyworm-egg', 'fall-armyworm-frass', 'fall-armyworm-larva', 'fall-armyworm-larval-damage', 'healthy-maize', 'maize-streak-disease']
+
+roboflow:
+  workspace: fall-armyworm
+  project: fall-armyworm
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/fall-armyworm/fall-armyworm/dataset/2

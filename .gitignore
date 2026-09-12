@@ -31,3 +31,10 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Exclude dataset & training runs
+dataset/
+runs/
+
+.vercel
+.env*

@@ -1,4 +1,4 @@
-import { SystemStatusResponse } from './types';
+import { SystemStatusResponse, VisualLog } from './types';
 import { initialSystemStatus } from './mockData';
 
 export const DEFAULT_API_URL = 'http://localhost:5000';
@@ -40,12 +40,13 @@ export async function testApiConnection(targetUrl?: string): Promise<{ success: 
 }
 
 export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse; isLive: boolean }> {
-  const url = getApiBaseUrl().replace(/\/$/, '');
+  // Try local or configured Flask AI Server URL
+  const customUrl = getApiBaseUrl().replace(/\/$/, '');
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-    const res = await fetch(`${url}/status/latest`, {
+    const res = await fetch(`${customUrl}/status/latest`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal
@@ -63,13 +64,44 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
       };
     }
   } catch (err) {
-    // Graceful offline fallback
+    // Fallback to internal Vercel API endpoint /api/detections
+  }
+
+  // Fallback ke Next.js API route /api/detections (saat dideploy di Vercel)
+  try {
+    const res = await fetch('/api/detections', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.systemStatus) {
+        return {
+          data: data.systemStatus,
+          isLive: true
+        };
+      }
+    }
+  } catch (err) {
+    // Fallback offline
   }
 
   return {
     data: initialSystemStatus,
     isLive: false
   };
+}
+
+export async function fetchVisualLogs(): Promise<VisualLog[]> {
+  try {
+    const res = await fetch('/api/detections', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.visualLogs && Array.isArray(data.visualLogs)) {
+        return data.visualLogs;
+      }
+    }
+  } catch (err) {
+    console.warn('Fetch visual logs fallback:', err);
+  }
+  return [];
 }
 
 export async function sendTelemetry(sensorPayload: {
@@ -94,4 +126,5 @@ export async function sendTelemetry(sensorPayload: {
   }
   return { success: true };
 }
+
 

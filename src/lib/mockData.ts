@@ -11,6 +11,8 @@ export const initialSystemStatus: SystemStatusResponse = {
   confidence: 0.89,
   biopesticide_level: 85,
   biopesticide_capacity_liters: 5.0,
+  water_level: 60,
+  water_capacity_liters: 20.0,
   temp: 24.0,
   humidity: 68.0,
   active_node: "v1.0",
