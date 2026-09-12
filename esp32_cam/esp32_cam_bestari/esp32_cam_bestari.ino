@@ -1,6 +1,6 @@
 /*
   ===============================================================================
-    BESTARI (Samsung Solve for Tomorrow 2026) - ESP32-CAM Firmware (PRODUCTION READY)
+    BESTARI - ESP32-CAM Firmware (PRODUCTION READY)
     Sistem Otomatis Deteksi Hama Ulat Grayak & Kelembaban Tanah
     Aktuator: Pengaduk Biopestisida, Pompa Penyiram Air & Biopestisida
   ===============================================================================
@@ -425,7 +425,6 @@ void setup() {
 
   Serial.println("\n=========================================================");
   Serial.println("  BESTARI - ESP32-CAM AI Pest & Soil Monitoring System   ");
-  Serial.println("  Samsung Solve for Tomorrow 2026                        ");
   Serial.println("=========================================================");
 
   // Inisialisasi Kamera OV2640

@@ -241,7 +241,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
         </div>
 
         <div className="bg-[#F2F4F3] p-3 rounded-xl border border-[#E1E3E2] text-[11px] text-[#41484B] space-y-1">
-          <p className="font-bold text-[#163F4C] font-hanken">Samsung Solve for Tomorrow 2026</p>
+          <p className="font-bold text-[#163F4C] font-hanken">BESTARI Inovasi Pertanian Presisi</p>
           <p className="text-[10px]">Anggota: Faizahra Safina Yuwono, Halim Adi Cahya, Sri Puji Astuti</p>
         </div>
 

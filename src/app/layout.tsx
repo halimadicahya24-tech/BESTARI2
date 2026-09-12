@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'BESTARI - Eco-Precision AI Biopesticide Technology',
-  description: 'Sistem Monitoring Kualitas Tanaman & Status Biopestisida Berbasis IoT & AI - Samsung Solve for Tomorrow 2026',
+  description: 'Sistem Monitoring Kualitas Tanaman & Status Biopestisida Berbasis IoT & AI',
   authors: [{ name: 'Tim BESTARI - SMAN Sumatera Selatan' }],
 };
 

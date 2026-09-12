@@ -1,6 +1,6 @@
 """
 ===============================================================================
-  BESTARI (Samsung Solve for Tomorrow 2026) - Flask AI YOLO Inference Server
+  BESTARI - Flask AI YOLO Inference Server
 ===============================================================================
   Penulis : Fajrin Al Majid & Tim BESTARI SMAN Sumatera Selatan
   Deskripsi: Server Flask API untuk menerima gambar dari ESP32-CAM, 
@@ -84,7 +84,7 @@ def load_yolo_model():
 def index():
     return jsonify({
         "status": "online",
-        "system": "BESTARI Pest Monitoring AI Server (Samsung Solve for Tomorrow 2026)",
+        "system": "BESTARI Pest Monitoring AI Server",
         "model_loaded": MODEL_PATH if Path(MODEL_PATH).exists() else FALLBACK_MODEL_PATH,
         "conf_threshold": CONF_THRESHOLD,
         "vercel_webhook": VERCEL_APP_URL or "Belum Diatur (Set VERCEL_APP_URL env var)"

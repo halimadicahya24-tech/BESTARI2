@@ -1,6 +1,6 @@
 """
 ===============================================================================
-  BESTARI (Samsung Solve for Tomorrow 2026) - ONNX Ultra-Lightweight AI Server
+  BESTARI - ONNX Ultra-Lightweight AI Server
 ===============================================================================
   Deskripsi: Server Flask berbasis ONNXRuntime (Ukuran ~20MB, tanpa PyTorch)
              Sangat cocok untuk deployment gratis di PythonAnywhere / VPS RAM kecil.
@@ -100,7 +100,7 @@ def index():
     return jsonify({
         "status": "online",
         "engine": "ONNXRuntime (Ultra-Lightweight)",
-        "system": "BESTARI Pest Monitoring AI Server (Samsung Solve for Tomorrow 2026)",
+        "system": "BESTARI Pest Monitoring AI Server",
         "conf_threshold": CONF_THRESHOLD,
         "classes": CLASS_NAMES
     })

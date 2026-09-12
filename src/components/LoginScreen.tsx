@@ -40,7 +40,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           Biopesticide Eco-Spray Technology with AI Vision
         </p>
         <span className="mt-1.5 px-2.5 py-0.5 rounded-full bg-[#B8EAD7] text-[#1F4F41] text-[10px] font-bold border border-[#9FD1BF]">
-          Samsung Solve for Tomorrow 2026
+          Eco-Precision Technology
         </span>
       </div>
 
@@ -129,7 +129,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           </div>
           <div className="flex items-center gap-1.5">
             <Radio className="w-3.5 h-3.5 text-[#386758] animate-pulse" />
-            <span>SFT 2026 ONLINE</span>
+            <span>SYSTEM ONLINE</span>
           </div>
         </div>
       </div>

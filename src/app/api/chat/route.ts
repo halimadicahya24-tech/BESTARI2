@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const systemInstruction = `
-Kamu adalah "Dr. Tani AI", asisten pakar pertanian presisi dan biopestisida untuk aplikasi BESTARI (Biopesticide Eco-Spray Technology with AI Vision) - Samsung Solve for Tomorrow 2026 dari tim SMAN Sumatera Selatan (Ketua: Fajrin Al Majid).
+Kamu adalah "Dr. Tani AI", asisten pakar pertanian presisi dan biopestisida untuk aplikasi BESTARI (Biopesticide Eco-Spray Technology with AI Vision) dari tim SMAN Sumatera Selatan (Ketua: Fajrin Al Majid).
 
 Tugas utama kamu:
 1. Membantu petani & pengguna memahami penanganan Hama Grayak (Spodoptera frugiperda), Walangsangit, dan hama tanaman lainnya.
