@@ -247,7 +247,7 @@ void executeSoilWatering(int soilMoisturePercent) {
 bool sendPhotoToPythonAnywhere(camera_fb_t* fb, int soilPercent, String &jsonResponse) {
   WiFiClientSecure client;
   client.setInsecure(); // Skip verifikasi sertifikat SSL untuk kemudahan PythonAnywhere
-  client.setTimeout(15000);
+  client.setTimeout(25000); // 25s timeout untuk pemrosesan AI model
 
   Serial.printf("[BESTARI NETWORK] Menghubungkan ke https://%s:%d%s ...\n", SERVER_HOST, SERVER_PORT, SERVER_PATH);
 
@@ -262,13 +262,13 @@ bool sendPhotoToPythonAnywhere(camera_fb_t* fb, int soilPercent, String &jsonRes
 
   uint32_t totalLen = head.length() + fb->len + tail.length();
 
-  // Kirim Header HTTP/1.1 POST
+  // Kirim Header HTTP/1.1 POST dengan CRLF yang presisi
   client.printf("POST %s HTTP/1.1\r\n", SERVER_PATH);
   client.printf("Host: %s\r\n", SERVER_HOST);
   client.printf("X-Soil-Moisture: %d\r\n", soilPercent);
   client.printf("Content-Type: multipart/form-data; boundary=%s\r\n", boundary.c_str());
   client.printf("Content-Length: %u\r\n", totalLen);
-  client.println("Connection: close\r\n");
+  client.print("Connection: close\r\n\r\n");
 
   // Stream Body multipart (Header + Buffer Kamera + Tail)
   client.print(head);
@@ -289,30 +289,33 @@ bool sendPhotoToPythonAnywhere(camera_fb_t* fb, int soilPercent, String &jsonRes
   // Baca Response Server
   unsigned long timeout = millis();
   while (client.connected() && !client.available()) {
-    if (millis() - timeout > 10000) {
-      Serial.println("[BESTARI NETWORK ERROR] Timeout menunggu respon server!");
+    if (millis() - timeout > 25000) {
+      Serial.println("[BESTARI NETWORK ERROR] Timeout 25s menunggu respon server!");
       client.stop();
       return false;
     }
     delay(50);
   }
 
-  // Parse HTTP Header & Extract JSON Body
-  bool isBody = false;
-  jsonResponse = "";
+  // Baca seluruh respon mentah dari server
+  String fullResponse = "";
   while (client.available()) {
-    String line = client.readStringUntil('\n');
-    if (line == "\r" || line == "") {
-      isBody = true;
-      continue;
-    }
-    if (isBody) {
-      jsonResponse += line;
-    }
+    fullResponse += (char)client.read();
+  }
+  client.stop();
+
+  // Ekstrak blok JSON di antara '{' dan '}'
+  int firstBrace = fullResponse.indexOf('{');
+  int lastBrace = fullResponse.lastIndexOf('}');
+  if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+    jsonResponse = fullResponse.substring(firstBrace, lastBrace + 1);
+    return true;
   }
 
-  client.stop();
-  return (jsonResponse.length() > 0);
+  Serial.println("[BESTARI NETWORK ERROR] Respon server tidak berisi JSON valid:");
+  int previewLen = fullResponse.length() > 200 ? 200 : fullResponse.length();
+  Serial.println(fullResponse.substring(0, previewLen));
+  return false;
 }
 
 // ===============================================================================
