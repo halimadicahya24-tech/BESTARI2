@@ -36,56 +36,8 @@ export const initialSystemStatus: SystemStatusResponse = {
   }
 };
 
-export const initialVisualLogs: VisualLog[] = [
-  {
-    id: "log_1029",
-    timestamp: "2026-10-24T10:30:00Z",
-    formatted_time: "10:30 AM",
-    date: "Oct 24, 2026",
-    cam_id: "Cam 1",
-    status: "warning",
-    hama_terdeteksi: 2,
-    confidence: 0.89,
-    image_url: LEAF_IMAGE_WARNING,
-    threat_type: "Ulat Grayak (Spodoptera litura)"
-  },
-  {
-    id: "log_1028",
-    timestamp: "2026-10-24T08:15:00Z",
-    formatted_time: "08:15 AM",
-    date: "Oct 24, 2026",
-    cam_id: "Cam 1",
-    status: "safe",
-    hama_terdeteksi: 0,
-    confidence: 0.98,
-    image_url: LEAF_IMAGE_SAFE,
-    threat_type: "Daun Sehat / Safe"
-  },
-  {
-    id: "log_1027",
-    timestamp: "2026-10-24T06:00:00Z",
-    formatted_time: "06:00 AM",
-    date: "Oct 24, 2026",
-    cam_id: "Cam 1",
-    status: "safe",
-    hama_terdeteksi: 0,
-    confidence: 0.96,
-    image_url: LEAF_IMAGE_SAFE,
-    threat_type: "Daun Sehat / Safe"
-  },
-  {
-    id: "log_1026",
-    timestamp: "2026-10-23T18:45:00Z",
-    formatted_time: "06:45 PM",
-    date: "Oct 23, 2026",
-    cam_id: "Cam 1",
-    status: "warning",
-    hama_terdeteksi: 1,
-    confidence: 0.84,
-    image_url: LEAF_IMAGE_WARNING,
-    threat_type: "Ulat Grayak (Spodoptera litura)"
-  }
-];
+// Initial visual logs start empty until ESP32-CAM streams real photos
+export const initialVisualLogs: VisualLog[] = [];
 
 export const healthScoreMatrix = [
   { time: "06:00", score: 96, status: "safe" },

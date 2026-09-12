@@ -247,7 +247,7 @@ void executeSoilWatering(int soilMoisturePercent) {
 bool sendPhotoToPythonAnywhere(camera_fb_t* fb, int soilPercent, String &jsonResponse) {
   WiFiClientSecure client;
   client.setInsecure(); // Skip verifikasi sertifikat SSL untuk kemudahan PythonAnywhere
-  client.setTimeout(25000); // 25s timeout untuk pemrosesan AI model
+  client.setTimeout(45000); // 45s timeout untuk pemrosesan AI model
 
   Serial.printf("[BESTARI NETWORK] Menghubungkan ke https://%s:%d%s ...\n", SERVER_HOST, SERVER_PORT, SERVER_PATH);
 
@@ -289,8 +289,8 @@ bool sendPhotoToPythonAnywhere(camera_fb_t* fb, int soilPercent, String &jsonRes
   // Baca Response Server
   unsigned long timeout = millis();
   while (client.connected() && !client.available()) {
-    if (millis() - timeout > 25000) {
-      Serial.println("[BESTARI NETWORK ERROR] Timeout 25s menunggu respon server!");
+    if (millis() - timeout > 45000) {
+      Serial.println("[BESTARI NETWORK ERROR] Timeout 45s menunggu respon server!");
       client.stop();
       return false;
     }

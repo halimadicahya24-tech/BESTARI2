@@ -37,7 +37,7 @@ def add_cors_headers(response):
 # Konfigurasi Path Model ONNX & Ambang Batas
 MODEL_PATH = os.environ.get("ONNX_MODEL_PATH", "best.onnx")
 CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", 0.50))
-VERCEL_APP_URL = os.environ.get("VERCEL_APP_URL", "https://bestari-app.vercel.app").rstrip("/")
+VERCEL_APP_URL = os.environ.get("VERCEL_APP_URL", "https://bestari-3.vercel.app").rstrip("/")
 
 # Nama Kelas Dataset BESTARI
 CLASS_NAMES = [
@@ -213,41 +213,41 @@ def detect_pest():
         outputs = session.run(None, {input_name: img_np})
         output_tensor = outputs[0][0]  # Shape: (10, 8400) -> [x, y, w, h, score_cls0, score_cls1, ...]
 
-        # Parsing Deteksi YOLOv8 Output
+        # Parsing Deteksi YOLOv8 Output (NumPy Vectorized - Ultra Fast)
         detections = []
         ulat_grayak_count = 0
         is_threat_detected = False
 
-        # Output shape is (4 + num_classes, 8400)
-        num_boxes = output_tensor.shape[1]
-        
-        for i in range(num_boxes):
-            box_data = output_tensor[:, i]
-            cx, cy, w, h = box_data[:4]
-            class_scores = box_data[4:]
-            
-            cls_id = int(np.argmax(class_scores))
-            conf = float(class_scores[cls_id])
-            
-            if conf >= CONF_THRESHOLD:
-                class_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
-                
-                # Bounding Box standar (x1, y1, x2, y2) disesuaikan ke resolusi asli
-                x1 = float((cx - w / 2) * (orig_w / 640.0))
-                y1 = float((cy - h / 2) * (orig_h / 640.0))
-                x2 = float((cx + w / 2) * (orig_w / 640.0))
-                y2 = float((cy + h / 2) * (orig_h / 640.0))
+        class_scores = output_tensor[4:, :]  # Shape: (num_classes, 8400)
+        max_scores = np.max(class_scores, axis=0)  # Shape: (8400,)
+        cls_ids = np.argmax(class_scores, axis=0)  # Shape: (8400,)
 
-                detections.append({
-                    "class_id": cls_id,
-                    "class_name": class_name,
-                    "confidence": round(conf, 4),
-                    "bbox": [round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1)]
-                })
+        valid_mask = max_scores >= CONF_THRESHOLD
+        valid_indices = np.where(valid_mask)[0]
 
-                if any(k in class_name.lower() for k in THREAT_KEYWORDS) or cls_id in [0, 1, 2, 3]:
-                    ulat_grayak_count += 1
-                    is_threat_detected = True
+        for i in valid_indices:
+            cx, cy, w, h = output_tensor[:4, i]
+            cls_id = int(cls_ids[i])
+            conf = float(max_scores[i])
+
+            class_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
+            
+            # Bounding Box standar (x1, y1, x2, y2) disesuaikan ke resolusi asli
+            x1 = float((cx - w / 2) * (orig_w / 640.0))
+            y1 = float((cy - h / 2) * (orig_h / 640.0))
+            x2 = float((cx + w / 2) * (orig_w / 640.0))
+            y2 = float((cy + h / 2) * (orig_h / 640.0))
+
+            detections.append({
+                "class_id": cls_id,
+                "class_name": class_name,
+                "confidence": round(conf, 4),
+                "bbox": [round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1)]
+            })
+
+            if any(k in class_name.lower() for k in THREAT_KEYWORDS) or cls_id in [0, 1, 2, 3]:
+                ulat_grayak_count += 1
+                is_threat_detected = True
 
         inference_time_ms = round((time.time() - start_time) * 1000, 2)
         
