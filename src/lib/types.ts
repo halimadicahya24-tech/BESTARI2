@@ -1,12 +1,20 @@
 export type PlantStatus = 'safe' | 'warning';
 export type ConnectionStatus = 'offline' | 'connecting' | 'connected';
 
+export interface DetectionItem {
+  class_id?: number;
+  class_name?: string;
+  confidence: number;
+  bbox?: number[];
+}
+
 export interface CameraFeed {
   cam_id: string;
   name: string;
   is_active: boolean;
   image_url: string;
   last_capture_time: string;
+  detections?: DetectionItem[];
 }
 
 export interface TelemetryData {
@@ -47,6 +55,7 @@ export interface VisualLog {
   confidence: number;
   image_url: string;
   threat_type: string;
+  detections?: DetectionItem[];
 }
 
 export interface PumpActivity {
@@ -72,4 +81,5 @@ export interface SystemStatusResponse {
   last_updated: string;
   camera_feeds: CameraFeed[];
   pump_status: PumpActivity;
+  detections?: DetectionItem[];
 }

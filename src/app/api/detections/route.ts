@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       timestamp = new Date().toISOString(),
     } = body;
 
-    const isWarning = plant_status === 'warning' || threat_detected || ulat_grayak_count > 0;
+    const isWarning = ulat_grayak_count > 0 || (threat_detected && plant_status === 'warning');
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const threatName = isWarning
       ? `Ulat Grayak (${ulat_grayak_count} ekor)`
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
       water_level: water_level !== undefined ? water_level : currentSystemStatus.water_level,
       biopesticide_level: biopesticide_level !== undefined ? biopesticide_level : currentSystemStatus.biopesticide_level,
       last_updated: formatted_time,
+      detections: isWarning ? detections : [],
       pump_status: {
         ...currentSystemStatus.pump_status,
         is_active: isWarning,
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
             is_active: true,
             image_url: image_url || feed.image_url,
             last_capture_time: formatted_time,
+            detections: isWarning ? detections : [],
           };
         }
         return feed;
@@ -87,10 +89,11 @@ export async function POST(request: Request) {
         date: dateStr,
         cam_id,
         status: isWarning ? 'warning' : 'safe',
-        hama_terdeteksi: ulat_grayak_count,
+        hama_terdeteksi: isWarning ? ulat_grayak_count : 0,
         confidence: detections.length > 0 ? (detections[0].confidence || 0.90) : 0.95,
         image_url,
         threat_type: threatName,
+        detections: isWarning ? detections : [],
       };
 
       // Tambahkan ke paling depan, batasi maksimal 50 log terbaru

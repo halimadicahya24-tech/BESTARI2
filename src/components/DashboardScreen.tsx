@@ -101,15 +101,44 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           )}
 
           {/* AI Bounding Box Overlay (#00FF00 high visibility strike) */}
-          {isWarning && showAiBoxes && (
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-[35%] left-[36%] w-[22%] h-[28%] border-2 border-[#00FF00] rounded bg-[#00FF00]/15 animate-pulse">
-                <span className="absolute -top-5 left-0 bg-[#00FF00] text-black text-[9px] font-extrabold px-1.5 py-0.5 rounded shadow-sm">
-                  Ulat Grayak 91%
-                </span>
+          {isWarning && showAiBoxes && (() => {
+            const activeDetections = (activeCam?.detections && activeCam.detections.length > 0)
+              ? activeCam.detections
+              : (systemStatus.detections || []);
+
+            if (activeDetections.length === 0) return null;
+
+            return (
+              <div className="absolute inset-0 pointer-events-none">
+                {activeDetections.map((det, index) => {
+                  if (!det.bbox || det.bbox.length < 4) return null;
+
+                  const [x1, y1, x2, y2] = det.bbox;
+                  const imgW = x2 <= 1 ? 1 : 640;
+                  const imgH = y2 <= 1 ? 1 : 480;
+
+                  const left = `${Math.max(0, Math.min(100, (x1 / imgW) * 100))}%`;
+                  const top = `${Math.max(0, Math.min(100, (y1 / imgH) * 100))}%`;
+                  const width = `${Math.max(5, Math.min(100, ((x2 - x1) / imgW) * 100))}%`;
+                  const height = `${Math.max(5, Math.min(100, ((y2 - y1) / imgH) * 100))}%`;
+                  const confPercent = Math.round(det.confidence * 100);
+                  const labelName = det.class_name ? det.class_name.replace(/-/g, ' ') : 'Ulat Grayak';
+
+                  return (
+                    <div
+                      key={index}
+                      style={{ left, top, width, height }}
+                      className="absolute border-2 border-[#00FF00] rounded bg-[#00FF00]/15 animate-pulse"
+                    >
+                      <span className="absolute -top-5 left-0 bg-[#00FF00] text-black text-[9px] font-extrabold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+                        {labelName} {confPercent}%
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Inner Viewfinder Reticle Corners */}
           <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-[#00FF00]/80 pointer-events-none" />
