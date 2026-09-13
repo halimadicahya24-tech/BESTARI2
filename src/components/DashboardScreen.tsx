@@ -242,8 +242,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           />
         </div>
 
-        <div className="flex items-center justify-between text-[10px] text-[#71787B] font-semibold">
-          <span>0% Kosong</span>
+        <div className="flex items-center justify-end text-[10px] text-[#71787B] font-semibold">
           <span>{systemStatus.biopesticide_level}% Tersisa (100% Kapasitas)</span>
         </div>
       </div>
@@ -272,8 +271,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-[10px] text-[#71787B] font-semibold">
-          <span>0% Kosong</span>
+        <div className="flex items-center justify-end text-[10px] text-[#71787B] font-semibold">
           <span>{systemStatus.water_level ?? 60}% Tersisa (100% Kapasitas)</span>
         </div>
       </div>
