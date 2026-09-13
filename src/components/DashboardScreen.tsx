@@ -96,7 +96,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <img
               src={activeCam.image_url}
               alt={`ESP32-CAM ${selectedCamId}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover scale-y-[-1]"
             />
           )}
 
@@ -118,9 +118,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   const imgH = y2 <= 1 ? 1 : 480;
 
                   const left = `${Math.max(0, Math.min(100, (x1 / imgW) * 100))}%`;
-                  const top = `${Math.max(0, Math.min(100, (y1 / imgH) * 100))}%`;
+                  const rawTopNum = (y1 / imgH) * 100;
+                  const heightNum = ((y2 - y1) / imgH) * 100;
+                  // Penyesuaian Y-axis karena gambar dibalik vertikal (scale-y-[-1]) di UI
+                  const flippedTopNum = 100 - rawTopNum - heightNum;
+
+                  const top = `${Math.max(0, Math.min(100, flippedTopNum))}%`;
                   const width = `${Math.max(5, Math.min(100, ((x2 - x1) / imgW) * 100))}%`;
-                  const height = `${Math.max(5, Math.min(100, ((y2 - y1) / imgH) * 100))}%`;
+                  const height = `${Math.max(5, Math.min(100, heightNum))}%`;
                   const confPercent = Math.round(det.confidence * 100);
                   const labelName = det.class_name ? det.class_name.replace(/-/g, ' ') : 'Ulat Grayak';
 
@@ -238,8 +243,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </div>
 
         <div className="flex items-center justify-between text-[10px] text-[#71787B] font-semibold">
-          <span>0L Kosong</span>
-          <span>4.25L Tersisa / 5.0L Kapasitas</span>
+          <span>0% Kosong</span>
+          <span>{systemStatus.biopesticide_level}% Tersisa (100% Kapasitas)</span>
         </div>
       </div>
 
@@ -253,8 +258,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             </span>
           </div>
           <span className="text-lg font-black text-[#163F4C] font-hanken">
-            {(((systemStatus.water_level ?? 60) / 100) * (systemStatus.water_capacity_liters ?? 20)).toFixed(0)}L{' '}
-            <span className="text-xs font-medium text-[#41484B]">({systemStatus.water_level ?? 60}%)</span>
+            {systemStatus.water_level ?? 60}%
           </span>
         </div>
 
@@ -269,8 +273,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </div>
 
         <div className="flex items-center justify-between text-[10px] text-[#71787B] font-semibold">
-          <span>0L Kosong</span>
-          <span>Kapasitas {systemStatus.water_capacity_liters ?? 20}L</span>
+          <span>0% Kosong</span>
+          <span>{systemStatus.water_level ?? 60}% Tersisa (100% Kapasitas)</span>
         </div>
       </div>
 
