@@ -36,8 +36,41 @@ def add_cors_headers(response):
 
 # Konfigurasi Path Model ONNX & Ambang Batas
 MODEL_PATH = os.environ.get("ONNX_MODEL_PATH", "best.onnx")
-CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", 0.50))
+CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", 0.60))
 VERCEL_APP_URL = os.environ.get("VERCEL_APP_URL", "https://bestari-3.vercel.app").rstrip("/")
+
+def nms(boxes, scores, iou_threshold=0.45):
+    """Non-Maximum Suppression (NMS) untuk menghilangkan bounding box ganda/tumpang tindih"""
+    if len(boxes) == 0:
+        return []
+    
+    x1 = boxes[:, 0]
+    y1 = boxes[:, 1]
+    x2 = boxes[:, 2]
+    y2 = boxes[:, 3]
+    
+    areas = (x2 - x1) * (y2 - y1)
+    order = scores.argsort()[::-1]
+    
+    keep = []
+    while order.size > 0:
+        i = order[0]
+        keep.append(i)
+        
+        xx1 = np.maximum(x1[i], x1[order[1:]])
+        yy1 = np.maximum(y1[i], y1[order[1:]])
+        xx2 = np.minimum(x2[i], x2[order[1:]])
+        yy2 = np.minimum(y2[i], y2[order[1:]])
+        
+        w = np.maximum(0.0, xx2 - xx1)
+        h = np.maximum(0.0, yy2 - yy1)
+        inter = w * h
+        
+        ovr = inter / (areas[i] + areas[order[1:]] - inter + 1e-6)
+        inds = np.where(ovr <= iou_threshold)[0]
+        order = order[inds + 1]
+        
+    return keep
 
 # Nama Kelas Dataset BESTARI
 CLASS_NAMES = [
@@ -221,52 +254,73 @@ def detect_pest():
 
         pil_img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         orig_w, orig_h = pil_img.size
-        
-        # Preprocessing Gambar untuk YOLO (640x640)
-        img_resized = pil_img.resize((640, 640))
-        img_np = np.array(img_resized).astype(np.float32) / 255.0  # Normalisasi 0.0 - 1.0
-        img_np = np.transpose(img_np, (2, 0, 1))                   # HWC ke CHW
-        img_np = np.expand_dims(img_np, axis=0)                    # Batch size 1: (1, 3, 640, 640)
 
-        # Run ONNX Inference
-        outputs = session.run(None, {input_name: img_np})
-        output_tensor = outputs[0][0]  # Shape: (10, 8400) -> [x, y, w, h, score_cls0, score_cls1, ...]
+        # Cek Kecerahan Gambar (Deteksi Frame Hitam / Gelap akibat kamera tertutup atau flash mati)
+        np_img_orig = np.array(pil_img)
+        mean_brightness = float(np.mean(np_img_orig))
+        is_dark_frame = mean_brightness < 15.0  # Rata-rata kecerahan < 15 dari 255 (sangat gelap/hitam)
 
-        # Parsing Deteksi YOLOv8 Output (NumPy Vectorized - Ultra Fast)
         detections = []
         ulat_grayak_count = 0
         is_threat_detected = False
 
-        class_scores = output_tensor[4:, :]  # Shape: (num_classes, 8400)
-        max_scores = np.max(class_scores, axis=0)  # Shape: (8400,)
-        cls_ids = np.argmax(class_scores, axis=0)  # Shape: (8400,)
+        if not is_dark_frame:
+            # Preprocessing Gambar untuk YOLO (640x640)
+            img_resized = pil_img.resize((640, 640))
+            img_np = np.array(img_resized).astype(np.float32) / 255.0  # Normalisasi 0.0 - 1.0
+            img_np = np.transpose(img_np, (2, 0, 1))                   # HWC ke CHW
+            img_np = np.expand_dims(img_np, axis=0)                    # Batch size 1: (1, 3, 640, 640)
 
-        valid_mask = max_scores >= CONF_THRESHOLD
-        valid_indices = np.where(valid_mask)[0]
+            # Run ONNX Inference
+            outputs = session.run(None, {input_name: img_np})
+            output_tensor = outputs[0][0]  # Shape: (10, 8400) -> [x, y, w, h, score_cls0, score_cls1, ...]
 
-        for i in valid_indices:
-            cx, cy, w, h = output_tensor[:4, i]
-            cls_id = int(cls_ids[i])
-            conf = float(max_scores[i])
+            class_scores = output_tensor[4:, :]  # Shape: (num_classes, 8400)
+            max_scores = np.max(class_scores, axis=0)  # Shape: (8400,)
+            cls_ids = np.argmax(class_scores, axis=0)  # Shape: (8400,)
 
-            class_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
-            
-            # Bounding Box standar (x1, y1, x2, y2) disesuaikan ke resolusi asli
-            x1 = float((cx - w / 2) * (orig_w / 640.0))
-            y1 = float((cy - h / 2) * (orig_h / 640.0))
-            x2 = float((cx + w / 2) * (orig_w / 640.0))
-            y2 = float((cy + h / 2) * (orig_h / 640.0))
+            valid_mask = max_scores >= CONF_THRESHOLD
+            valid_indices = np.where(valid_mask)[0]
 
-            detections.append({
-                "class_id": cls_id,
-                "class_name": class_name,
-                "confidence": round(conf, 4),
-                "bbox": [round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1)]
-            })
+            if len(valid_indices) > 0:
+                raw_boxes = []
+                raw_scores = []
+                for i in valid_indices:
+                    cx, cy, w, h = output_tensor[:4, i]
+                    raw_boxes.append([cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2])
+                    raw_scores.append(max_scores[i])
 
-            if any(k in class_name.lower() for k in THREAT_KEYWORDS) or cls_id in [0, 1, 2, 3]:
-                ulat_grayak_count += 1
-                is_threat_detected = True
+                keep = nms(np.array(raw_boxes), np.array(raw_scores), iou_threshold=0.45)
+
+                for idx in keep:
+                    i = valid_indices[idx]
+                    cx, cy, w, h = output_tensor[:4, i]
+                    cls_id = int(cls_ids[i])
+                    conf = float(max_scores[i])
+                    class_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
+
+                    # Hanya hitung jika kelas terdeteksi adalah HAMA (bukan tanaman/daun sehat)
+                    threat_keywords = ["ulat", "grayak", "armyworm", "larva", "damage", "egg", "frass"]
+                    healthy_keywords = ["healthy", "safe", "sehat", "maize-healthy"]
+                    
+                    is_pest_class = any(k in class_name.lower() for k in threat_keywords) and not any(h in class_name.lower() for h in healthy_keywords)
+
+                    if is_pest_class:
+                        x1 = float((cx - w / 2) * (orig_w / 640.0))
+                        y1 = float((cy - h / 2) * (orig_h / 640.0))
+                        x2 = float((cx + w / 2) * (orig_w / 640.0))
+                        y2 = float((cy + h / 2) * (orig_h / 640.0))
+
+                        detections.append({
+                            "class_id": cls_id,
+                            "class_name": class_name,
+                            "confidence": round(conf, 4),
+                            "bbox": [round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1)]
+                        })
+                        ulat_grayak_count += 1
+                        is_threat_detected = True
+        else:
+            print(f"[BESTARI ONNX] Frame Sangat Gelap Dideteksi (Mean Brightness: {mean_brightness:.1f}). Mengabaikan deteksi AI.")
 
         inference_time_ms = round((time.time() - start_time) * 1000, 2)
         

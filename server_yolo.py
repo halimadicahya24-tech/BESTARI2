@@ -116,34 +116,47 @@ def detect_pest():
 
         pil_img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         
-        # Run YOLO Inference
-        start_time = time.time()
-        results = model.predict(pil_img, conf=CONF_THRESHOLD)
-        inference_time_ms = round((time.time() - start_time) * 1000, 2)
+        # Cek Kecerahan Gambar (Deteksi Frame Hitam / Gelap akibat kamera tertutup atau flash mati)
+        np_img = np.array(pil_img)
+        mean_brightness = float(np.mean(np_img))
+        is_dark_frame = mean_brightness < 15.0  # Rata-rata kecerahan < 15 dari 255 (sangat gelap/hitam)
 
         detections = []
         ulat_grayak_count = 0
         is_threat_detected = False
 
-        for r in results:
-            boxes = r.boxes
-            for box in boxes:
-                cls_id = int(box.cls[0])
-                class_name = model.names[cls_id]
-                conf = float(box.conf[0])
-                bbox = box.xyxy[0].tolist()  # [x1, y1, x2, y2]
+        start_time = time.time()
 
-                detections.append({
-                    "class_id": cls_id,
-                    "class_name": class_name,
-                    "confidence": round(conf, 4),
-                    "bbox": [round(x, 1) for x in bbox]
-                })
+        if not is_dark_frame:
+            # Run YOLO Inference
+            results = model.predict(pil_img, conf=CONF_THRESHOLD)
 
-                threat_keywords = ["ulat", "grayak", "armyworm", "larva", "damage", "egg", "frass"]
-                if any(k in class_name.lower() for k in threat_keywords) or cls_id in [0, 1, 2, 3]:
-                    ulat_grayak_count += 1
-                    is_threat_detected = True
+            for r in results:
+                boxes = r.boxes
+                for box in boxes:
+                    cls_id = int(box.cls[0])
+                    class_name = model.names[cls_id] if hasattr(model, 'names') and cls_id in model.names else str(cls_id)
+                    conf = float(box.conf[0])
+                    bbox = box.xyxy[0].tolist()  # [x1, y1, x2, y2]
+
+                    threat_keywords = ["ulat", "grayak", "armyworm", "larva", "damage", "egg", "frass"]
+                    healthy_keywords = ["healthy", "safe", "sehat", "maize-healthy"]
+                    
+                    is_pest_class = any(k in class_name.lower() for k in threat_keywords) and not any(h in class_name.lower() for h in healthy_keywords)
+
+                    if is_pest_class:
+                        detections.append({
+                            "class_id": cls_id,
+                            "class_name": class_name,
+                            "confidence": round(conf, 4),
+                            "bbox": [round(x, 1) for x in bbox]
+                        })
+                        ulat_grayak_count += 1
+                        is_threat_detected = True
+        else:
+            print(f"[BESTARI AI] Frame Sangat Gelap Dideteksi (Mean Brightness: {mean_brightness:.1f}). Mengabaikan deteksi AI.")
+
+        inference_time_ms = round((time.time() - start_time) * 1000, 2)
 
         # Cek Pemicuan Manual dari Dashboard Web
         is_manual_active = time.time() < system_config["manual_pump_trigger_until"]

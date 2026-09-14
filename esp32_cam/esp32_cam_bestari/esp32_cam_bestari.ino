@@ -138,7 +138,7 @@ bool initCamera() {
   }
 
   sensor_t * s = esp_camera_sensor_get();
-  s->set_vflip(s, 1);   // Flip vertikal jika kamera terbalik
+  s->set_vflip(s, 1);   // Flip vertikal pada hardware kamera
   s->set_hmirror(s, 0);
 
   Serial.println("[BESTARI CAM] Driver Kamera OV2640 Berhasil Diaktifkan.");
@@ -297,10 +297,20 @@ bool sendPhotoToPythonAnywhere(camera_fb_t* fb, int soilPercent, String &jsonRes
     delay(50);
   }
 
-  // Baca seluruh respon mentah dari server
+  // Baca seluruh respon mentah dari server (Tunggu hingga seluruh HTTP header & body JSON selesai dibaca)
   String fullResponse = "";
-  while (client.available()) {
-    fullResponse += (char)client.read();
+  unsigned long startReadTime = millis();
+  while (client.connected() || client.available()) {
+    while (client.available()) {
+      char c = (char)client.read();
+      fullResponse += c;
+      startReadTime = millis(); // Reset timeout jika ada data baru masuk
+    }
+    // Hentikan pembacaan jika koneksi sudah idle selama 3 detik setelah menerima data
+    if (fullResponse.length() > 0 && (millis() - startReadTime > 3000)) {
+      break;
+    }
+    delay(10);
   }
   client.stop();
 
@@ -313,8 +323,9 @@ bool sendPhotoToPythonAnywhere(camera_fb_t* fb, int soilPercent, String &jsonRes
   }
 
   Serial.println("[BESTARI NETWORK ERROR] Respon server tidak berisi JSON valid:");
-  int previewLen = fullResponse.length() > 200 ? 200 : fullResponse.length();
-  Serial.println(fullResponse.substring(0, previewLen));
+  Serial.println("--- MENTAH RESPON SERVER ---");
+  Serial.println(fullResponse);
+  Serial.println("----------------------------");
   return false;
 }
 
@@ -336,9 +347,14 @@ void processDetectionAndControl() {
   Serial.printf("\n[SENSOR SOIL] GPIO 13 | Raw ADC: %d | Kelembaban: %d%% | Status: %s\n",
                 rawSoilVal, soilPercent, isSoilDry ? "KERING ⚠️" : "LEMBAB / CUKUP ✅");
 
-  // 2. Tangkap Gambar dari Kamera OV2640
-  Serial.println("[BESTARI CAM] Menangkap foto tanaman...");
+  // 2. Tangkap Gambar dari Kamera OV2640 dengan Flash LED
+  Serial.println("[BESTARI CAM] Menyalakan Flash LED & menangkap foto tanaman...");
+  digitalWrite(FLASH_LED_PIN, HIGH);
+  delay(150); // Jeda 150ms agar exposure kamera stabil
+
   camera_fb_t * fb = esp_camera_fb_get();
+  digitalWrite(FLASH_LED_PIN, LOW); // Matikan Flash LED
+
   if (!fb) {
     Serial.println("[BESTARI CAM ERROR] Gagal menangkap gambar dari OV2640!");
     return;

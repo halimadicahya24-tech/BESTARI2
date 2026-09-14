@@ -94,7 +94,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         <div className="relative rounded-xl overflow-hidden bg-black border-2 border-[#305664] aspect-[16/9] shadow-inner group">
           {activeCam?.image_url && (
             <img
-              src={activeCam.image_url}
+              src={
+                activeCam.image_url.startsWith('data:')
+                  ? activeCam.image_url
+                  : `${activeCam.image_url}${activeCam.image_url.includes('?') ? '&' : '?'}t=${encodeURIComponent(activeCam.last_capture_time || systemStatus.last_updated || 'live')}`
+              }
               alt={`ESP32-CAM ${selectedCamId}`}
               className="w-full h-full object-cover scale-y-[-1]"
             />

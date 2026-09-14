@@ -72,12 +72,42 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
     const res = await fetch('/api/detections', { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
-      if (data.systemStatus) {
+      if (data.systemStatus && data.systemStatus.camera_feeds) {
         return {
           data: data.systemStatus,
           isLive: true
         };
       }
+    }
+  } catch (err) {
+    // Fallback ke PythonAnywhere
+  }
+
+  // Fallback 24/7: Query langsung ke Server AI PythonAnywhere
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const res = await fetch('https://halimadi.pythonanywhere.com/status/latest', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        data: {
+          ...initialSystemStatus,
+          ...data,
+          camera_feeds: (data.camera_feeds && data.camera_feeds.length > 0)
+            ? data.camera_feeds
+            : initialSystemStatus.camera_feeds,
+        },
+        isLive: true
+      };
     }
   } catch (err) {
     // Fallback offline
