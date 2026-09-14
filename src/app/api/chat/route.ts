@@ -12,15 +12,60 @@ Tugas utama kamu:
 5. PENTING FORMATTING: Tuliskan balasan dengan format teks bersih dan rapi. JANGAN gunakan tanda bintang berlebihan (seperti **teks** atau *teks*). Gunakan baris baru dan penomoran sederhana (1., 2., 3.) untuk memperjelas respon.
 `;
 
+function getSmartFallbackResponse(query: string): string {
+  const q = query.toLowerCase();
+
+  if (q.includes('beauveria') || q.includes('dosis') || q.includes('konsentrasi') || q.includes('spora')) {
+    return `Formulasi & Dosis Ideal Biopestisida Beauveria bassiana:
+
+1. Dosis Standar: 10^8 spora/ml (sekitar 100 gram formulasi spora per 14 Liter air).
+2. Waktu Penyemprotan Terbaik: Sore hari pukul 15:30 - 17:00 WIB agar jamur Beauveria tidak rusak oleh paparan sinar UV matahari langsung.
+3. Mekanisme Kerja: Spora Beauveria akan menempel pada kutikula ulat grayak, berkecambah, menembus tubuh ulat, dan membasminya secara alami tanpa merusak lingkungan.
+4. Tips Pengadukan: Aktifkan Dinamo Pengaduk (GPIO 14) pada sistem BESTARI selama 4 detik sebelum semprot agar suspensi spora homogen.`;
+  }
+
+  if (q.includes('hama') || q.includes('ulat') || q.includes('grayak') || q.includes('gejala')) {
+    return `Penanganan Hama Ulat Grayak (Spodoptera frugiperda):
+
+1. Gejala Serangan: Daun jagung/tanaman berlubang tidak beraturan, terdapat bekas gigitan ulat dan kotoran berupa serbuk seperti gergaji pada pupus daun.
+2. Solusi BESTARI:
+   - Kamera ESP32-CAM mendeteksi ulat secara visual dengan AI YOLOv8.
+   - Sistem memicu otomatis micro-spraying larutan Beauveria bassiana.
+3. Tindakan Pencegahan: Jaga kebersihan lahan, gunakan tanaman perangkap, dan lakukan monitoring berkala melalui menu Beranda aplikasi.`;
+  }
+
+  if (q.includes('esp32') || q.includes('sensor') || q.includes('pompa') || q.includes('hardware') || q.includes('pin')) {
+    return `Panduan Hardware & Telemetri BESTARI:
+
+1. Sensor Kelembaban Tanah: Terhubung ke GPIO 13 (ADC2). Jika kelembaban < 20% (kering) dan bebas hama, sistem menyiram air otomatis.
+2. Dinamo Pengaduk Biopestisida: Terhubung ke Relay Channel 1 (GPIO 14). Aktif 4 detik sebelum penyemprotan.
+3. Pompa Micro-Spray: Terhubung ke Relay Channel 2 (GPIO 15).
+4. Flash LED Kamera: GPIO 4 menyala otomatis 150ms saat pemotretan foto agar gambar jernih.`;
+  }
+
+  return `Halo! Saya Dr. Tani AI, asisten pakar pertanian presisi BESTARI.
+
+Terima kasih atas pertanyaan Anda: "${query}".
+
+Untuk mengaktifkan respon cerdas penuh berbasis Google Gemini AI di Vercel:
+1. Dapatkan API Key dari https://aistudio.google.com/
+2. Buka Dashboard Vercel -> Project BESTARI -> Settings -> Environment Variables.
+3. Tambahkan key: GEMINI_API_KEY dengan nilai API Key Anda.
+
+Ada yang bisa saya bantu mengenai penanganan Ulat Grayak, dosis Beauveria bassiana, atau konfigurasi sensor ESP32-CAM?`;
+}
+
 export async function POST(req: NextRequest) {
+  let userMessage = '';
   try {
     const { message, history } = await req.json();
+    userMessage = message || '';
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
-    if (!apiKey || apiKey.includes('GANTI_DENGAN_API_KEY')) {
+    if (!apiKey || apiKey.includes('GANTI_DENGAN_API_KEY') || apiKey.length < 20) {
       return NextResponse.json({
-        reply: '⚠️ **API Key Gemini belum dikonfigurasi** pada file `.env.local`.\n\nSilakan buka file `.env.local` dan masukkan `GEMINI_API_KEY=AIzaSy...` Anda yang didapatkan dari [Google AI Studio](https://aistudio.google.com/).',
+        reply: getSmartFallbackResponse(userMessage),
         isFallback: true
       });
     }
@@ -99,7 +144,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Gemini API Error:', error);
     return NextResponse.json({
-      reply: `⚠️ Terjadi kendala koneksi Gemini API: ${error?.message || 'Gagal menghubungi server Gemini'}. Mohon periksa kembali API Key pada file \`.env.local\`.`,
+      reply: getSmartFallbackResponse(userMessage),
       isFallback: true
     });
   }
