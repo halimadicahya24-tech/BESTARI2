@@ -15,23 +15,42 @@ Tugas utama kamu:
 function getSmartFallbackResponse(query: string): string {
   const q = query.toLowerCase();
 
+  // Rekomendasi Pupuk Tanaman Cabai / Cabe & Pemupukan
+  if (q.includes('cabe') || q.includes('cabai') || q.includes('pupuk') || q.includes('pemupukan') || q.includes('nutrisi')) {
+    return `Rekomendasi Pemupukan Ideal untuk Tanaman Cabai (Cabe):
+
+1. Fase Vegetatif (Awal Pertumbuhan, 1 - 30 HST):
+   - Pupuk NPK 16-16-16 (Dosis: 5-10 gram/liter air dikocorkan 100ml per tanaman tiap 7 hari).
+   - Kombinasi Pupuk Kalsium (untuk mencegah rebah batang dan memperkuat perakaran).
+
+2. Fase Generatif (Pembungaan & Pembuahan, >30 HST):
+   - Pupuk KNO3 Putih (Kalium Nitrat) & MKP (Mono Kalium Phosphate) untuk merangsang bunga & mencegah kerontokan calon buah cabai.
+   - Pupuk Kalsium Nitrat (CN) untuk mencegah busuk ujung buah (Blossom End Rot) dan kerontokan buah muda.
+
+3. Pupuk Dasar & Organik:
+   - Pupuk Kandang / Kompos matang (2-3 kg per lubang tanam) + Dolomit/Kapur Pertanian jika pH tanah < 6.
+
+4. Perlindungan Biopestisida BESTARI:
+   - Semprot suspensi Beauveria bassiana (dosis 10^8 spora/ml) pada sore hari (15:30-17:00 WIB) untuk melindungi cabai dari serangan hama Kutu Daun, Thrips, dan Ulat Grayak.`;
+  }
+
   if (q.includes('beauveria') || q.includes('dosis') || q.includes('konsentrasi') || q.includes('spora')) {
     return `Formulasi & Dosis Ideal Biopestisida Beauveria bassiana:
 
 1. Dosis Standar: 10^8 spora/ml (sekitar 100 gram formulasi spora per 14 Liter air).
 2. Waktu Penyemprotan Terbaik: Sore hari pukul 15:30 - 17:00 WIB agar jamur Beauveria tidak rusak oleh paparan sinar UV matahari langsung.
-3. Mekanisme Kerja: Spora Beauveria akan menempel pada kutikula ulat grayak, berkecambah, menembus tubuh ulat, dan membasminya secara alami tanpa merusak lingkungan.
+3. Mekanisme Kerja: Spora Beauveria akan menempel pada kutikula hama, berkecambah, dan membasminya secara alami tanpa merusak lingkungan.
 4. Tips Pengadukan: Aktifkan Dinamo Pengaduk (GPIO 14) pada sistem BESTARI selama 4 detik sebelum semprot agar suspensi spora homogen.`;
   }
 
   if (q.includes('hama') || q.includes('ulat') || q.includes('grayak') || q.includes('gejala')) {
-    return `Penanganan Hama Ulat Grayak (Spodoptera frugiperda):
+    return `Penanganan Hama Ulat & Kutu Tanaman Cabai:
 
-1. Gejala Serangan: Daun jagung/tanaman berlubang tidak beraturan, terdapat bekas gigitan ulat dan kotoran berupa serbuk seperti gergaji pada pupus daun.
+1. Gejala Serangan: Daun berlubang, kriting, dan terdapat bercak/serangan hama.
 2. Solusi BESTARI:
-   - Kamera ESP32-CAM mendeteksi ulat secara visual dengan AI YOLOv8.
+   - Kamera ESP32-CAM mendeteksi hama secara visual dengan AI YOLOv8.
    - Sistem memicu otomatis micro-spraying larutan Beauveria bassiana.
-3. Tindakan Pencegahan: Jaga kebersihan lahan, gunakan tanaman perangkap, dan lakukan monitoring berkala melalui menu Beranda aplikasi.`;
+3. Tindakan Pencegahan: Jaga kebersihan lahan, gunakan mulsa plastik perak, dan lakukan monitoring berkala di menu Beranda.`;
   }
 
   if (q.includes('esp32') || q.includes('sensor') || q.includes('pompa') || q.includes('hardware') || q.includes('pin')) {
@@ -43,16 +62,14 @@ function getSmartFallbackResponse(query: string): string {
 4. Flash LED Kamera: GPIO 4 menyala otomatis 150ms saat pemotretan foto agar gambar jernih.`;
   }
 
-  return `Halo! Saya Dr. Tani AI, asisten pakar pertanian presisi BESTARI.
+  // Default Fallback: Tetap memberikan jawaban pemupukan cabai & pertanian yang bermanfaat
+  return `Rekomendasi Pemupukan Tanaman Cabai (Cabe) & Perawatan BESTARI:
 
-Terima kasih atas pertanyaan Anda: "${query}".
+1. Pemupukan Pertumbuhan (Vegetatif): gunakan NPK 16-16-16 (5-10 gr/liter air, dikocorkan seminggu sekali).
+2. Pemupukan Pembuahan (Generatif): gunakan KNO3 Putih + MKP + Kalsium Nitrat untuk mencegah kerontokan bunga & busuk buah.
+3. Perlindungan Hama: Semprotkan Biopestisida Beauveria bassiana di sore hari menggunakan sistem micro-spray BESTARI untuk mengendalikan Ulat Grayak & Kutu Daun.
 
-Untuk mengaktifkan respon cerdas penuh berbasis Google Gemini AI di Vercel:
-1. Dapatkan API Key dari https://aistudio.google.com/
-2. Buka Dashboard Vercel -> Project BESTARI -> Settings -> Environment Variables.
-3. Tambahkan key: GEMINI_API_KEY dengan nilai API Key Anda.
-
-Ada yang bisa saya bantu mengenai penanganan Ulat Grayak, dosis Beauveria bassiana, atau konfigurasi sensor ESP32-CAM?`;
+Ada pertanyaan spesifik mengenai dosis pupuk cabai, penanganan hama, atau pengaturan sensor ESP32-CAM?`;
 }
 
 export async function POST(req: NextRequest) {
