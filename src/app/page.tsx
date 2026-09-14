@@ -159,7 +159,7 @@ export default function Home() {
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div className="flex items-center gap-2">
-                  <img src="/logo.png" alt="BESTARI Logo" className="w-8 h-8 object-contain" />
+                  <img src="/logo-white.png" alt="BESTARI Logo" className="w-8 h-8 object-contain" />
                   <div>
                     <h2 className="font-extrabold text-base tracking-wider font-hanken">BESTARI</h2>
                     <p className="text-[10px] text-[#A3CADA]">Biopesticide Eco-Spray</p>
