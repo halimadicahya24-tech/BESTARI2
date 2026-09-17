@@ -14,10 +14,14 @@ import base64
 import threading
 import urllib.request
 import json
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from flask import Flask, request, jsonify
 from PIL import Image
 import numpy as np
+
+# Zona Waktu WIB (Palembang / UTC+7)
+WIB = timezone(timedelta(hours=7))
 
 try:
     import onnxruntime as ort
@@ -334,7 +338,7 @@ def detect_pest():
 
         # Encode gambar ke Base64 untuk Webhook Vercel & Dashboard UI
         img_b64 = "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")
-        current_time_str = time.strftime("%H:%M WIB", time.localtime())
+        current_time_str = datetime.now(WIB).strftime("%H:%M WIB")
 
         # Baca Sensor Kelembaban Tanah dari Header ESP32-CAM (jika ada)
         soil_moisture_header = request.headers.get("X-Soil-Moisture")
@@ -355,11 +359,12 @@ def detect_pest():
         })
 
         # Prepend ke riwayat log foto real-time
+        now_wib = datetime.now(WIB)
         new_log_entry = {
             "id": f"log_{int(time.time() * 1000)}",
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "timestamp": now_wib.strftime("%Y-%m-%dT%H:%M:%S+07:00"),
             "formatted_time": current_time_str,
-            "date": time.strftime("%b %d, %Y", time.localtime()),
+            "date": now_wib.strftime("%b %d, %Y"),
             "cam_id": "ESP32-CAM (Utama)",
             "status": plant_status,
             "hama_terdeteksi": ulat_grayak_count,
@@ -383,7 +388,7 @@ def detect_pest():
             "total_detections": len(detections),
             "detections": detections,
             "image_url": img_b64,
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "timestamp": now_wib.strftime("%Y-%m-%dT%H:%M:%S+07:00"),
             "formatted_time": current_time_str
         }
 

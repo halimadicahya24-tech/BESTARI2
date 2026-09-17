@@ -27,6 +27,10 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
+    const nowJakarta = new Date();
+    const defaultWibTime = nowJakarta.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+    const dateStr = nowJakarta.toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta', month: 'short', day: 'numeric', year: 'numeric' });
+
     const {
       cam_id = 'Cam 1',
       plant_status = 'safe',
@@ -36,12 +40,11 @@ export async function POST(request: Request) {
       detections = [],
       water_level,
       biopesticide_level,
-      formatted_time = 'Baru saja',
-      timestamp = new Date().toISOString(),
+      formatted_time = defaultWibTime,
+      timestamp = nowJakarta.toISOString(),
     } = body;
 
     const isWarning = ulat_grayak_count > 0 || (threat_detected && plant_status === 'warning');
-    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const threatName = isWarning
       ? `Ulat Grayak (${ulat_grayak_count} ekor)`
       : 'Daun Sehat / Safe';

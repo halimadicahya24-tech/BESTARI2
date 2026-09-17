@@ -114,13 +114,12 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Daftar kandidat nama model Gemini untuk fallback otomatis (diurutkan dari model ter-cepat / low latency)
+    // Daftar kandidat nama model Gemini resmi (diurutkan dari model tercepat/stabil)
     const candidateModels = [
-      'gemini-3.5-flash-lite',
-      'gemini-flash-lite-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-3.6-flash',
-      'gemini-3.5-flash',
+      'gemini-1.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-pro',
+      'gemini-1.0-pro'
     ];
 
     let responseText = '';

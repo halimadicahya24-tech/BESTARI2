@@ -48,7 +48,7 @@ export const DrTaniChatbotScreen: React.FC = () => {
       id: Date.now().toString(),
       sender: 'user',
       text: query,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -71,7 +71,7 @@ export const DrTaniChatbotScreen: React.FC = () => {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
         text: data.reply || 'Maaf, terjadi kesalahan saat memproses jawaban.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }),
         badge: data.isFallback ? 'Pemberitahuan System' : 'Gemini AI Response'
       };
 
@@ -82,7 +82,7 @@ export const DrTaniChatbotScreen: React.FC = () => {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
         text: 'Sistem mengalami kesulitan jaringan. Silakan pastikan server Next.js berjalan di `http://localhost:3000`.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }),
         badge: 'Error System'
       };
       setMessages((prev) => [...prev, botMsg]);
@@ -132,7 +132,7 @@ export const DrTaniChatbotScreen: React.FC = () => {
               Dr. Tani AI Chatbot
               <Sparkles className="w-3.5 h-3.5 text-[#A3CADA]" />
             </h2>
-            <p className="text-[11px] text-[#A3CADA]">Powered by Google Gemini 3.5 Flash Lite</p>
+            <p className="text-[11px] text-[#A3CADA]">Powered by Google Gemini 1.5 Flash</p>
           </div>
         </div>
         <span className="px-2.5 py-1 rounded-full bg-[#386758] text-white text-[10px] font-bold border border-[#B8EAD7]/30 flex items-center gap-1">

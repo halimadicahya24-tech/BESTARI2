@@ -49,16 +49,35 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
     const res = await fetch(`${customUrl}/status/latest`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
       signal: controller.signal
     });
     clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = await res.json();
+      const updatedFeeds = (data.camera_feeds && data.camera_feeds.length > 0)
+        ? data.camera_feeds.map((feed: any) => ({
+            ...feed,
+            image_url: (feed.image_url && !feed.image_url.includes('/mock_cam1.jpg')) 
+              ? feed.image_url 
+              : (data.latest_image || feed.image_url || '/mock_cam1.jpg')
+          }))
+        : [
+            {
+              cam_id: 'Cam 1',
+              name: 'Bedengan Utama Zone A1',
+              image_url: data.latest_image || initialSystemStatus.camera_feeds[0].image_url,
+              status: 'active',
+              last_capture_time: data.last_detection_time || 'live'
+            }
+          ];
+
       return {
         data: {
           ...initialSystemStatus,
           ...data,
+          camera_feeds: updatedFeeds
         },
         isLive: true
       };
@@ -98,13 +117,20 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
 
     if (res.ok) {
       const data = await res.json();
+      const updatedFeeds = (data.camera_feeds && data.camera_feeds.length > 0)
+        ? data.camera_feeds.map((feed: any) => ({
+            ...feed,
+            image_url: (feed.image_url && !feed.image_url.includes('/mock_cam1.jpg')) 
+              ? feed.image_url 
+              : (data.latest_image || feed.image_url || '/mock_cam1.jpg')
+          }))
+        : initialSystemStatus.camera_feeds;
+
       return {
         data: {
           ...initialSystemStatus,
           ...data,
-          camera_feeds: (data.camera_feeds && data.camera_feeds.length > 0)
-            ? data.camera_feeds
-            : initialSystemStatus.camera_feeds,
+          camera_feeds: updatedFeeds,
         },
         isLive: true
       };

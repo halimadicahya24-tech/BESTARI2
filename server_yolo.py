@@ -13,16 +13,19 @@
 import os
 import io
 import time
+import base64
+import threading
+import urllib.request
+import json
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
 import numpy as np
 
-import base64
-import threading
-import urllib.request
-import json
+# Zona Waktu WIB (Palembang / UTC+7)
+WIB = timezone(timedelta(hours=7))
 
 # Cek & Load Ultralytics YOLO
 try:
@@ -171,7 +174,8 @@ def detect_pest():
 
         # Encode gambar ke Base64 untuk Webhook Vercel & Dashboard UI
         img_b64 = "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")
-        current_time_str = time.strftime("%H:%M WIB", time.localtime())
+        now_wib = datetime.now(WIB)
+        current_time_str = now_wib.strftime("%H:%M WIB")
 
         # Baca Sensor Kelembaban Tanah dari Header ESP32-CAM (jika ada)
         soil_moisture_header = request.headers.get("X-Soil-Moisture")
@@ -206,7 +210,7 @@ def detect_pest():
             "total_detections": len(detections),
             "detections": detections,
             "image_url": img_b64,
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "timestamp": now_wib.strftime("%Y-%m-%dT%H:%M:%S+07:00"),
             "formatted_time": current_time_str
         }
 
