@@ -100,7 +100,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   : `${activeCam.image_url}${activeCam.image_url.includes('?') ? '&' : '?'}t=${encodeURIComponent(activeCam.last_capture_time || systemStatus.last_updated || 'live')}`
               }
               alt={`ESP32-CAM ${selectedCamId}`}
-              className="w-full h-full object-cover scale-y-[-1]"
+              className="w-full h-full object-cover"
             />
           )}
 
@@ -124,10 +124,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   const left = `${Math.max(0, Math.min(100, (x1 / imgW) * 100))}%`;
                   const rawTopNum = (y1 / imgH) * 100;
                   const heightNum = ((y2 - y1) / imgH) * 100;
-                  // Penyesuaian Y-axis karena gambar dibalik vertikal (scale-y-[-1]) di UI
-                  const flippedTopNum = 100 - rawTopNum - heightNum;
 
-                  const top = `${Math.max(0, Math.min(100, flippedTopNum))}%`;
+                  const top = `${Math.max(0, Math.min(100, rawTopNum))}%`;
                   const width = `${Math.max(5, Math.min(100, ((x2 - x1) / imgW) * 100))}%`;
                   const height = `${Math.max(5, Math.min(100, heightNum))}%`;
                   const confPercent = Math.round(det.confidence * 100);

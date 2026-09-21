@@ -132,7 +132,7 @@ export const DrTaniChatbotScreen: React.FC = () => {
               Dr. Tani AI Chatbot
               <Sparkles className="w-3.5 h-3.5 text-[#A3CADA]" />
             </h2>
-            <p className="text-[11px] text-[#A3CADA]">Powered by Google Gemini 1.5 Flash</p>
+            <p className="text-[11px] text-[#A3CADA]">Powered by Google Gemini AI</p>
           </div>
         </div>
         <span className="px-2.5 py-1 rounded-full bg-[#386758] text-white text-[10px] font-bold border border-[#B8EAD7]/30 flex items-center gap-1">
