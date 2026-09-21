@@ -209,6 +209,26 @@ def manual_pump_control():
     print(f"[BESTARI ONNX PUMP CONTROL] Pompa manual dipicu selama {duration} detik!")
     return jsonify({"status": "success", "message": f"Pompa dipicu selama {duration}s", "trigger_until": system_config['manual_pump_trigger_until']})
 
+@app.route('/telemetry', methods=['POST'])
+def update_telemetry():
+    """Endpoint untuk menerima telemetri lengkap dari ESP32-CAM."""
+    data = request.get_json(silent=True) or {}
+    global latest_telemetry
+    
+    if 'soil_moisture_percent' in data:
+        latest_telemetry['soil_moisture'] = data['soil_moisture_percent']
+    if 'biopesticide_level_percent' in data:
+        latest_telemetry['biopesticide_level'] = data['biopesticide_level_percent']
+    if 'water_level_percent' in data:
+        latest_telemetry['water_level'] = data['water_level_percent']
+    if 'biopesticide_vol_ml' in data:
+        latest_telemetry['biopesticide_vol_ml'] = data['biopesticide_vol_ml']
+    if 'water_vol_ml' in data:
+        latest_telemetry['water_vol_ml'] = data['water_vol_ml']
+        
+    print(f"[BESTARI TELEMETRY] Soil: {latest_telemetry.get('soil_moisture')}% | Bio: {latest_telemetry.get('biopesticide_level')}% ({latest_telemetry.get('biopesticide_vol_ml')} mL) | Water: {latest_telemetry.get('water_level')}% ({latest_telemetry.get('water_vol_ml')} mL)")
+    return jsonify({"status": "success", "telemetry": latest_telemetry})
+
 @app.route('/status/latest', methods=['GET'])
 def get_latest_status():
     """Endpoint status telemetri sejalan dengan frontend BESTARI."""
@@ -216,7 +236,11 @@ def get_latest_status():
         "plant_status": latest_telemetry["plant_status"],
         "pest_detected": latest_telemetry["threat_detected"],
         "ulat_grayak_count": latest_telemetry["ulat_grayak_count"],
-        "biopesticide_level": latest_telemetry["biopesticide_level"],
+        "biopesticide_level": latest_telemetry.get("biopesticide_level", 85),
+        "water_level": latest_telemetry.get("water_level", 90),
+        "soil_moisture": latest_telemetry.get("soil_moisture", 65),
+        "biopesticide_vol_ml": latest_telemetry.get("biopesticide_vol_ml", 699),
+        "water_vol_ml": latest_telemetry.get("water_vol_ml", 740),
         "mode": "auto",
         "esp32_connected": True,
         "relay_active": latest_telemetry["relay_active"] or (time.time() < system_config['manual_pump_trigger_until']),
@@ -243,15 +267,18 @@ def detect_pest():
         except Exception as e:
             return jsonify({"error": f"Model ONNX gagal diinisialisasi: {str(e)}"}), 500
 
-    if 'image' not in request.files and not request.data:
+    if 'image' not in request.files and 'file' not in request.files and not request.data:
         return jsonify({"error": "Tidak ada gambar dikirim"}), 400
 
     try:
         start_time = time.time()
         
-        # Read Image File
+        # Read Image File (Mendukung key 'image' maupun 'file' dari ESP32-CAM)
         if 'image' in request.files:
             file = request.files['image']
+            image_bytes = file.read()
+        elif 'file' in request.files:
+            file = request.files['file']
             image_bytes = file.read()
         else:
             image_bytes = request.data

@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = "../esp32_cam/esp32_cam_bestari/esp32_cam_bestari.ino"
+elf = ""

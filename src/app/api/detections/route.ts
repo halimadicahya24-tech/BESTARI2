@@ -7,6 +7,23 @@ let currentSystemStatus: SystemStatusResponse = { ...initialSystemStatus };
 let currentVisualLogs: VisualLog[] = [ ...initialVisualLogs ];
 
 export async function GET() {
+  // Coba ambil data live terbaru dari PythonAnywhere 24/7 jika tersedia
+  try {
+    const res = await fetch('https://halimadi.pythonanywhere.com/status/latest', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.latest_image) {
+        currentSystemStatus.camera_feeds[0].image_url = data.latest_image;
+        currentSystemStatus.last_updated = data.last_detection_time || currentSystemStatus.last_updated;
+        if (data.water_level !== undefined) currentSystemStatus.water_level = data.water_level;
+        if (data.biopesticide_level !== undefined) currentSystemStatus.biopesticide_level = data.biopesticide_level;
+        if (data.soil_moisture !== undefined) currentSystemStatus.soil_moisture = data.soil_moisture;
+      }
+    }
+  } catch (e) {
+    // Abaikan jika offline
+  }
+
   return NextResponse.json(
     {
       status: 'success',

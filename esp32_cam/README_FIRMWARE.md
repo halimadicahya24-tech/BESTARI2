@@ -1,92 +1,57 @@
-# 🌿 BESTARI - Panduan Firmware ESP32-CAM (AI Pest Monitoring & Dual-Spraying System)
+# 🌿 BESTARI - Panduan Firmware ESP32-CAM Main Board
 **Samsung Solve for Tomorrow 2026**
 
-Firmware ini bertugas untuk:
-1. **Membaca Sensor Kelembaban Tanah (Soil Moisture)** dari pin **IO13 / GPIO 13**.
-2. **Mengambil foto tanaman** jagung/pertanian secara otomatis dari kamera OV2640.
-3. **Mengirim foto via HTTPS POST** ke Server Flask AI di **PythonAnywhere** (`https://<username>.pythonanywhere.com/detect`).
-4. **Menerima dan membaca hasil analisis AI** (`threat_detected`, `ulat_grayak_count`, `relay_action`).
-5. **Mengontrol Aktuator 2-Channel Relay secara Cerdas**:
-   - **Mode Biopestisida** (Hama Terdeteksi): Menyalakan **Dinamo Pengaduk (Relay IN1 - GPIO 14)** selama 4 detik, lalu **Pompa Semprot (Relay IN2 - GPIO 15)** selama 5 detik untuk menyemprot larutan biopestisida.
-   - **Mode Siram Air** (Tanah Kering & Bebas Hama): Menyalakan **Pompa Air (Relay IN2 - GPIO 15)** selama 4 detik untuk menyiram tanah dengan air netral (Dinamo Pengaduk tetap MATI).
-   - **Mode Standby** (Tanah Lembab & Bebas Hama): Seluruh relai tetap MATI.
+Firmware ini dikonfigurasi khusus untuk **ESP32-CAM (AI-Thinker OV2640 Module)** yang difungsikan sebagai **Main Controller Board** sekaligus **Kamera AI Deteksi Hama**.
 
 ---
 
-## 📌 Skema Wiring & Port Hardware Lengkap
+## 📌 Pemetaan Pinout Hardware Terbaru (Pin Fisik Header AI-Thinker)
 
-### 1. Solar Panel & System Power Supply (TP4056 + Step-Up):
-* **Panel Surya**:
-  * (-) Negatif -> `IN-` TP4056
-  * (+) Positif -> `IN+` TP4056
-* **TP4056 Charge Module**:
-  * `B+` -> Battery (+)
-  * `B-` -> Battery (-)
-  * `OUT+` -> Step-Up `IN+`, COM Relay Channel 1, COM Relay Channel 2
-  * `OUT-` -> Step-Up `IN-`
-* **Step-Up Boost Converter**:
-  * `OUT+` (5V) -> Pin `5V` ESP32-CAM, Pin `VCC` Relay Module
-  * `OUT-` (GND) -> Pin `GND` ESP32-CAM, Pompa (-), GND Relay, Dinamo (-), GND Sensor
-
-### 2. Modul Relay 2-Channel (Active LOW):
-| Komponen Aktuator | Pin Relay | Pin ESP32-CAM | Keterangan Fungsi |
+| Komponen Hardware | Pin Komponen | Pin ESP32-CAM | Deskripsi Aksi / Status Pin |
 | :--- | :--- | :---: | :--- |
-| **Dinamo Pengaduk Biopestisida (+)** | NO Channel 1 | **GPIO 14 (IN1)** | Mengaduk racikan biopestisida agar homogen |
-| **Pompa Semprot Air/Pestisida (+)** | NO Channel 2 | **GPIO 15 (IN2)** | Menyemprot biopestisida ke daun / siram air ke tanah |
-
-### 3. Sensor Kelembaban Tanah (Soil Moisture):
-| Pin Sensor | Pin ESP32-CAM | Keterangan |
-| :--- | :---: | :--- |
-| **VCC** | **3V3** | Daya sensor 3.3V |
-| **A0 (Analog Output)** | **GPIO 13 (IO13)** | Pembacaan analog kelembaban tanah (0 - 4095 ADC) |
-
----
-
-## ⚙️ Persiapan Arduino IDE
-
-1. **Board Settings**:
-   * Board: `AI Thinker ESP32-CAM`
-   * CPU Frequency: `240MHz (WiFi/BT)`
-   * Flash Frequency: `80MHz`
-   * Partition Scheme: `Huge APP (3MB No OTA/1MB SPIFFS)`
-   * PSRAM: `Enabled` (jika menggunakan modul dengan PSRAM)
-
-2. **Library Yang Dibutuhkan**:
-   * **`ArduinoJson`** (v6.x atau v7.x)
-   * **`WiFiClientSecure`** (Sudah bawaan ESP32 Board Core)
+| **Dinamo Pengaduk** | Relay IN1 | **GPIO 14** | **(TETAP)** Mengaduk larutan biopestisida |
+| **Pompa Semprot / Air** | Relay IN2 | **GPIO 15** | **(TETAP)** Menyemprot biopestisida / menyiram tanah |
+| **Sensor Ultrasonik 1 & 2** | Combined TRIG | **GPIO 12** | **(TETAP)** Sinyal triger bersama untuk HC-SR04 1 & 2 |
+| **Ultrasonik 1 (Tangki Biopestisida)** | ECHO | **GPIO 16** | **(DIUBAH)** Level biopestisida (Pin Header IO16 / U2RXD) |
+| **Ultrasonik 2 (Tangki Air Bersih)** | ECHO | **GPIO 3** | **(DIUBAH)** Level air bersih (Pin Header IO3 / U0RXD) |
+| **Sensor Kelembaban Tanah** | Analog Out (A0) | **GPIO 13** | **(TETAP)** Analog Read (ADC2_CH4 dengan trik Wi-Fi Pause) |
+| **Modul Kamera AI (OV2640)** | PCLK / Hardware | **GPIO 2** | **(TETAP)** Pixel clock internal OV2640 camera |
+| **Flash LED (Lampu Kilat)** | Flash Transistor | **GPIO 4** | **(TETAP)** Lampu kilat pencahayaan sampel daun |
 
 ---
 
-## 🚀 Pengaturan URL PythonAnywhere
+## ⚠️ Catatan PENTING Pengaturan IDE Arduino & Hardware
 
-Buka file **[`esp32_cam_bestari.ino`](file:///c:/Majid's/SFT'26/bestari/esp32_cam/esp32_cam_bestari.ino)** dan ubah variabel berikut sesuai jaringan & akun PythonAnywhere Anda:
+1. **Pengaturan Arduino IDE:**
+   - **Board**: `AI Thinker ESP32-CAM`
+   - **PSRAM**: `Disabled` *(Wajib Disabled karena GPIO 16 digunakan untuk ECHO Sensor Ultrasonik 1)*.
+   - **Partition Scheme**: `Huge APP (3MB No OTA/1MB SPIFFS)`
 
-```cpp
-const char* WIFI_SSID     = "NAMA_WIFI_ANDA";
-const char* WIFI_PASSWORD = "PASSWORD_WIFI_ANDA";
+2. **Keamanan Tegangan ECHO Ultrasonik:**
+   - Sensor HC-SR04 bekerja pada 5V dan mengeluarkan sinyal ECHO 5V.
+   - Sangat disarankan memasang **Voltage Divider** (resistor 1kΩ & 2kΩ) pada pin ECHO (GPIO 16 & GPIO 3) agar menurunkan sinyal dari 5V ke 3.3V demi keamanan pin ESP32-CAM.
 
-// URL Flask server Anda di PythonAnywhere
-const char* PYTHONANYWHERE_URL = "https://username.pythonanywhere.com/detect";
-```
+3. **Solusi ADC2 (GPIO 13) saat Wi-Fi Aktif:**
+   - GPIO 13 adalah pin Analog (ADC2_CH4). Firmware secara otomatis menjeda driver Wi-Fi (`esp_wifi_stop()`) selama beberapa milidetik saat membaca ADC2, lalu menyalakannya kembali (`esp_wifi_start()`) sehingga nilai ADC tidak bernilai 0 / 4095.
 
 ---
 
-## 🧪 Diagram Alur Logika Keputusan (Decision Tree)
+## 🧪 Diagram Alur Keputusan Otomatis
 
 ```mermaid
 graph TD
-    A[ESP32-CAM Baca Sensor Soil Moisture GPIO 13] --> B[Kamera Ambil Foto & Kirim ke PythonAnywhere]
-    B --> C{AI PythonAnywhere Analisis Foto}
-    C -->|Terdeteksi Ulat Grayak / Hama| D[MODE BIOPESTISIDA]
-    D --> D1[1. Menyalakan Dinamo Pengaduk GPIO 14 - 4 Detik]
-    D1 --> D2[2. Menyalakan Pompa Semprot GPIO 15 - 5 Detik]
-    D2 --> D3[3. Mematikan Dinamo & Pompa]
-
-    C -->|Tanaman Sehat & Bebas Hama| E{Cek Kelembaban Tanah}
-    E -->|Tanah Kering ADC > 2500| F[MODE SIRAM AIR TANAH]
-    F --> F1[1. Dinamo Mixer OFF]
-    F1 --> F2[2. Menyalakan Pompa Air GPIO 15 - 4 Detik]
-    F2 --> F3[3. Mematikan Pompa Air]
-
-    E -->|Tanah Lembab / Basah| G[MODE STANDBY - Tidak Ada Aksi]
+    A[Mulai: Baca Sensor GPIO 13, GPIO 12/16, GPIO 12/3] --> B[Cek Status Server PythonAnywhere /status/latest]
+    B --> C{Apakah Hama Terdeteksi?}
+    C -->|YA / Manual Trigger| D[MODE BIOPESTISIDA]
+    D --> D1[1. Dinamo Pengaduk GPIO 14 ON - 4s]
+    D1 --> D2[2. Pompa Semprot GPIO 15 ON - 5s]
+    D2 --> D3[3. Matikan Pompa & Dinamo]
+    
+    C -->|TIDAK / Bebas Hama| E{Cek Kelembaban Tanah GPIO 13}
+    E -->|Tanah Kering ADC >= 2500| F[MODE SIRAM AIR TANAH]
+    F --> F1[1. Dinamo GPIO 14 Tetap OFF]
+    F1 --> F2[2. Pompa Air GPIO 15 ON - 4s]
+    F2 --> F3[3. Matikan Pompa Air]
+    
+    E -->|Tanah Lembab ADC < 2500| G[MODE STANDBY - Seluruh Aktuator OFF]
 ```

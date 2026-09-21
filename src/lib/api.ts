@@ -1,7 +1,7 @@
 import { SystemStatusResponse, VisualLog } from './types';
 import { initialSystemStatus } from './mockData';
 
-export const DEFAULT_API_URL = 'http://localhost:5000';
+export const DEFAULT_API_URL = 'https://halimadi.pythonanywhere.com';
 
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
@@ -21,7 +21,7 @@ export async function testApiConnection(targetUrl?: string): Promise<{ success: 
   const url = (targetUrl || getApiBaseUrl()).replace(/\/$/, '');
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     const res = await fetch(`${url}/status/latest`, {
       method: 'GET',
@@ -31,20 +31,20 @@ export async function testApiConnection(targetUrl?: string): Promise<{ success: 
     clearTimeout(timeoutId);
 
     if (res.ok) {
-      return { success: true, message: 'Terhubung ke Flask ESP32 Backend!' };
+      return { success: true, message: 'Terhubung ke Server AI BESTARI (PythonAnywhere)!' };
     }
     return { success: false, message: `Response error status: ${res.status}` };
   } catch (err: any) {
-    return { success: false, message: err.name === 'AbortError' ? 'Koneksi Timeout (ESP32 tidak merespon)' : 'Gagal terhubung ke API (Offline/CORS)' };
+    return { success: false, message: err.name === 'AbortError' ? 'Koneksi Timeout' : 'Gagal terhubung ke Server AI' };
   }
 }
 
 export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse; isLive: boolean }> {
-  // Try local or configured Flask AI Server URL
+  // 1. Coba panggil server AI PythonAnywhere / Configured API URL terlebih dahulu
   const customUrl = getApiBaseUrl().replace(/\/$/, '');
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     const res = await fetch(`${customUrl}/status/latest`, {
       method: 'GET',
@@ -59,7 +59,7 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
       const updatedFeeds = (data.camera_feeds && data.camera_feeds.length > 0)
         ? data.camera_feeds.map((feed: any) => ({
             ...feed,
-            image_url: (feed.image_url && !feed.image_url.includes('/mock_cam1.jpg')) 
+            image_url: (feed.image_url && feed.image_url.startsWith('data:image')) 
               ? feed.image_url 
               : (data.latest_image || feed.image_url || '/mock_cam1.jpg')
           }))
@@ -83,10 +83,10 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
       };
     }
   } catch (err) {
-    // Fallback to internal Vercel API endpoint /api/detections
+    console.warn('PythonAnywhere status fetch timeout/error, trying fallback:', err);
   }
 
-  // Fallback ke Next.js API route /api/detections (saat dideploy di Vercel)
+  // 2. Fallback ke Next.js API route /api/detections
   try {
     const res = await fetch('/api/detections', { cache: 'no-store' });
     if (res.ok) {
@@ -99,43 +99,6 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
       }
     }
   } catch (err) {
-    // Fallback ke PythonAnywhere
-  }
-
-  // Fallback 24/7: Query langsung ke Server AI PythonAnywhere
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-    const res = await fetch('https://halimadi.pythonanywhere.com/status/latest', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store',
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      const data = await res.json();
-      const updatedFeeds = (data.camera_feeds && data.camera_feeds.length > 0)
-        ? data.camera_feeds.map((feed: any) => ({
-            ...feed,
-            image_url: (feed.image_url && !feed.image_url.includes('/mock_cam1.jpg')) 
-              ? feed.image_url 
-              : (data.latest_image || feed.image_url || '/mock_cam1.jpg')
-          }))
-        : initialSystemStatus.camera_feeds;
-
-      return {
-        data: {
-          ...initialSystemStatus,
-          ...data,
-          camera_feeds: updatedFeeds,
-        },
-        isLive: true
-      };
-    }
-  } catch (err) {
     // Fallback offline
   }
 
@@ -146,6 +109,21 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
 }
 
 export async function fetchVisualLogs(): Promise<VisualLog[]> {
+  // 1. Query langsung ke Server AI PythonAnywhere 24/7 (Riwayat foto asli ESP32-CAM)
+  const customUrl = getApiBaseUrl().replace(/\/$/, '');
+  try {
+    const res = await fetch(`${customUrl}/history`, { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.visualLogs && Array.isArray(data.visualLogs) && data.visualLogs.length > 0) {
+        return data.visualLogs;
+      }
+    }
+  } catch (err) {
+    console.warn('PythonAnywhere history fetch error:', err);
+  }
+
+  // 2. Fallback ke Next.js API route
   try {
     const res = await fetch('/api/detections', { cache: 'no-store' });
     if (res.ok) {
@@ -156,19 +134,6 @@ export async function fetchVisualLogs(): Promise<VisualLog[]> {
     }
   } catch (err) {
     console.warn('Fetch visual logs fallback:', err);
-  }
-
-  // Fallback: Query langsung ke Server AI PythonAnywhere 24/7
-  try {
-    const res = await fetch('https://halimadi.pythonanywhere.com/history', { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.visualLogs && Array.isArray(data.visualLogs)) {
-        return data.visualLogs;
-      }
-    }
-  } catch (err) {
-    console.warn('PythonAnywhere history fallback error:', err);
   }
 
   return [];

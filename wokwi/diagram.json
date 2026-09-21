@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "author": "BESTARI Team - SMAN Sumatera Selatan",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "ultrasonic1",
+      "top": -160,
+      "left": -220,
+      "attrs": { "distance": "25" }
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "ultrasonic2",
+      "top": -160,
+      "left": 60,
+      "attrs": { "distance": "30" }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "soil_pot",
+      "top": 240,
+      "left": -220,
+      "attrs": { "value": "750" }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo1",
+      "top": 120,
+      "left": 280,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay1",
+      "top": -40,
+      "left": 280,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay2",
+      "top": -40,
+      "left": 420,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay3",
+      "top": -40,
+      "left": 560,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_pump1",
+      "top": -140,
+      "left": 300,
+      "attrs": { "color": "blue", "label": "Pump1 Biopest" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_pump2",
+      "top": -140,
+      "left": 440,
+      "attrs": { "color": "cyan", "label": "Pump2 Air" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_mixer",
+      "top": -140,
+      "left": 580,
+      "attrs": { "color": "gold", "label": "Mixer Motor" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+
+    [ "esp:3V3", "soil_pot:VCC", "red", [ "v0" ] ],
+    [ "esp:GND.1", "soil_pot:GND", "black", [ "v0" ] ],
+    [ "esp:D34", "soil_pot:SIG", "green", [ "v0" ] ],
+
+    [ "esp:5V", "ultrasonic1:VCC", "red", [ "v-30", "h-100" ] ],
+    [ "esp:GND.1", "ultrasonic1:GND", "black", [ "v-20", "h-100" ] ],
+    [ "esp:D27", "ultrasonic1:TRIG", "orange", [ "v-40", "h-80" ] ],
+    [ "esp:D33", "ultrasonic1:ECHO", "yellow", [ "v-50", "h-80" ] ],
+
+    [ "esp:5V", "ultrasonic2:VCC", "red", [ "v-30", "h30" ] ],
+    [ "esp:GND.1", "ultrasonic2:GND", "black", [ "v-20", "h30" ] ],
+    [ "esp:D25", "ultrasonic2:TRIG", "purple", [ "v-40", "h20" ] ],
+    [ "esp:D26", "ultrasonic2:ECHO", "cyan", [ "v-50", "h20" ] ],
+
+    [ "esp:5V", "servo1:V+", "red", [ "h60" ] ],
+    [ "esp:GND.2", "servo1:GND", "black", [ "h60" ] ],
+    [ "esp:D18", "servo1:PWM", "orange", [ "h50" ] ],
+
+    [ "esp:5V", "relay1:VCC", "red", [ "h40" ] ],
+    [ "esp:GND.2", "relay1:GND", "black", [ "h40" ] ],
+    [ "esp:D4", "relay1:IN", "blue", [ "h80" ] ],
+
+    [ "esp:5V", "relay2:VCC", "red", [ "h40" ] ],
+    [ "esp:GND.2", "relay2:GND", "black", [ "h40" ] ],
+    [ "esp:D19", "relay2:IN", "blue", [ "h80" ] ],
+
+    [ "esp:5V", "relay3:VCC", "red", [ "h40" ] ],
+    [ "esp:GND.2", "relay3:GND", "black", [ "h40" ] ],
+    [ "esp:D23", "relay3:IN", "blue", [ "h80" ] ],
+
+    [ "relay1:NO", "led_pump1:A", "blue", [ "v-30" ] ],
+    [ "led_pump1:C", "esp:GND.2", "black", [ "v20" ] ],
+
+    [ "relay2:NO", "led_pump2:A", "cyan", [ "v-30" ] ],
+    [ "led_pump2:C", "esp:GND.2", "black", [ "v20" ] ],
+
+    [ "relay3:NO", "led_mixer:A", "gold", [ "v-30" ] ],
+    [ "led_mixer:C", "esp:GND.2", "black", [ "v20" ] ]
+  ],
+  "dependencies": {}
+}
