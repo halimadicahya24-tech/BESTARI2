@@ -103,8 +103,8 @@ function getSmartFallbackResponse(query: string): string {
 Ada pertanyaan spesifik mengenai perawatan sawi, cabai, dosis pupuk, atau sistem sensor ESP32?`;
 }
 
-// Function Helper dengan Timeout agar API call tidak pernah gantung (max 4.5 detik per model)
-async function fetchWithTimeout(promise: Promise<any>, ms: number = 4500): Promise<any> {
+// Function Helper dengan Timeout agar API call tidak pernah gantung (max 12 detik per model)
+async function fetchWithTimeout(promise: Promise<any>, ms: number = 12000): Promise<any> {
   let timeoutId: NodeJS.Timeout;
   const timeoutPromise = new Promise((_, reject) => {
     timeoutId = setTimeout(() => reject(new Error(`Timeout setelan ${ms}ms terlampaui`)), ms);
@@ -142,6 +142,7 @@ export async function POST(req: NextRequest) {
         parts: [{ text: msg.text }],
       }));
 
+    // Hapus pesan bot awal agar riwayat selalu diawali dengan role 'user'
     const firstUserIndex = formattedHistory.findIndex((msg: { role: string }) => msg.role === 'user');
     if (firstUserIndex !== -1) {
       formattedHistory = formattedHistory.slice(firstUserIndex);
@@ -149,8 +150,14 @@ export async function POST(req: NextRequest) {
       formattedHistory = [];
     }
 
-    if (formattedHistory.length > 8) {
-      formattedHistory = formattedHistory.slice(-8);
+    // Pastikan riwayat berakhir dengan role 'model' agar disusul pesan 'user' baru via sendMessage
+    while (formattedHistory.length > 0 && formattedHistory[formattedHistory.length - 1].role !== 'model') {
+      formattedHistory.pop();
+    }
+
+    // Batasi riwayat maksimum 6 percakapan terakhir agar konteks tetap segar & respon cepat
+    if (formattedHistory.length > 6) {
+      formattedHistory = formattedHistory.slice(-6);
       if (formattedHistory.length > 0 && formattedHistory[0].role !== 'user') {
         formattedHistory = formattedHistory.slice(1);
       }
@@ -158,12 +165,9 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Model kandidat resmi Gemini (diurutkan dari model paling ringan & cepat)
+    // Model kandidat resmi yang AKTIF & TERSEDIA untuk API key ini
     const candidateModels = [
-      'gemini-1.5-flash',
       'gemini-3.5-flash',
-      'gemini-1.5-flash-8b',
-      'gemini-2.0-flash-lite',
       'gemini-3.6-flash'
     ];
 
@@ -185,15 +189,14 @@ export async function POST(req: NextRequest) {
           history: formattedHistory,
         });
 
-        // Gunakan timeout 4.5 detik per model agar respon sangat cepat
-        const result = await fetchWithTimeout(chat.sendMessage(message), 4500);
+        const result = await fetchWithTimeout(chat.sendMessage(userMessage), 12000);
         responseText = result.response.text();
         if (responseText) {
           lastError = null;
-          break; // Berhasil!
+          break; // Berhasil mendapatkan respon AI asli!
         }
       } catch (err: any) {
-        console.warn(`Gemini Model ${modelName} percobaan gagal, mencoba fallback... Error:`, err?.message || err);
+        console.warn(`Gemini Model ${modelName} percobaan gagal... Error:`, err?.message || err);
         lastError = err;
       }
     }
