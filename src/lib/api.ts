@@ -1,5 +1,5 @@
 import { SystemStatusResponse, VisualLog } from './types';
-import { initialSystemStatus } from './mockData';
+import { initialSystemStatus, initialVisualLogs } from './mockData';
 
 export const DEFAULT_API_URL = 'https://halimadi.pythonanywhere.com';
 
@@ -39,6 +39,67 @@ export async function testApiConnection(targetUrl?: string): Promise<{ success: 
   }
 }
 
+const LOCAL_STORAGE_STATUS_KEY = 'bestari_last_valid_system_status';
+const LOCAL_STORAGE_LOGS_KEY = 'bestari_saved_visual_logs';
+
+function getSavedStatus(): SystemStatusResponse | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_STATUS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistStatus(status: SystemStatusResponse): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LOCAL_STORAGE_STATUS_KEY, JSON.stringify(status));
+  } catch {}
+}
+
+export function getSavedLogs(): VisualLog[] {
+  if (typeof window === 'undefined') return initialVisualLogs;
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_LOGS_KEY);
+    if (!raw) return initialVisualLogs;
+    const parsed: VisualLog[] = JSON.parse(raw);
+    const hasStaleWarnings = parsed.some(log => log.status === 'warning' || log.hama_terdeteksi > 0 || log.image_url.includes('svg'));
+    if (hasStaleWarnings) {
+      localStorage.removeItem(LOCAL_STORAGE_LOGS_KEY);
+      return initialVisualLogs;
+    }
+    return parsed.length > 0 ? parsed : initialVisualLogs;
+  } catch {
+    return initialVisualLogs;
+  }
+}
+
+export function persistLogs(logs: VisualLog[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LOCAL_STORAGE_LOGS_KEY, JSON.stringify(logs));
+  } catch {}
+}
+
+function mergeLogs(existing: VisualLog[], incoming: VisualLog[]): VisualLog[] {
+  const map = new Map<string, VisualLog>();
+  // Store existing logs first
+  existing.forEach((item) => {
+    const key = item.id || `${item.timestamp}_${item.formatted_time}`;
+    map.set(key, item);
+  });
+  // Overlay incoming logs
+  incoming.forEach((item) => {
+    const key = item.id || `${item.timestamp}_${item.formatted_time}`;
+    map.set(key, item);
+  });
+  const merged = Array.from(map.values());
+  merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+  return merged.slice(0, 50);
+}
+
 export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse; isLive: boolean }> {
   // 1. Coba panggil server AI PythonAnywhere / Configured API URL terlebih dahulu
   const customUrl = getApiBaseUrl().replace(/\/$/, '');
@@ -73,12 +134,37 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
             }
           ];
 
+      const liveStatus: SystemStatusResponse = {
+        ...initialSystemStatus,
+        ...data,
+        camera_feeds: updatedFeeds
+      };
+
+      // Simpan data live terbaru ke localStorage
+      persistStatus(liveStatus);
+
+      // Auto-save visual log jika ada foto terbaru dari ESP32-CAM
+      if (data.latest_image) {
+        const isWarning = data.pest_detected || data.threat_detected;
+        const newLog: VisualLog = {
+          id: `log_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          formatted_time: data.last_detection_time || 'Baru Saja',
+          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          cam_id: 'Cam 1',
+          status: isWarning ? 'warning' : 'safe',
+          hama_terdeteksi: data.ulat_grayak_count || 0,
+          confidence: 0.92,
+          image_url: data.latest_image,
+          threat_type: isWarning ? `Ulat Grayak (${data.ulat_grayak_count || 1} ekor)` : 'Daun Sehat / Safe',
+          detections: data.detections || []
+        };
+        const updatedLogs = mergeLogs(getSavedLogs(), [newLog]);
+        persistLogs(updatedLogs);
+      }
+
       return {
-        data: {
-          ...initialSystemStatus,
-          ...data,
-          camera_feeds: updatedFeeds
-        },
+        data: liveStatus,
         isLive: true
       };
     }
@@ -92,6 +178,11 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
     if (res.ok) {
       const data = await res.json();
       if (data.systemStatus && data.systemStatus.camera_feeds) {
+        persistStatus(data.systemStatus);
+        if (data.visualLogs && Array.isArray(data.visualLogs)) {
+          const updatedLogs = mergeLogs(getSavedLogs(), data.visualLogs);
+          persistLogs(updatedLogs);
+        }
         return {
           data: data.systemStatus,
           isLive: true
@@ -102,6 +193,15 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
     // Fallback offline
   }
 
+  // 3. Jika offline/error, gunakan data TERAKHIR yang pernah dikirimkan server
+  const lastKnownStatus = getSavedStatus();
+  if (lastKnownStatus) {
+    return {
+      data: lastKnownStatus,
+      isLive: false
+    };
+  }
+
   return {
     data: initialSystemStatus,
     isLive: false
@@ -109,14 +209,18 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
 }
 
 export async function fetchVisualLogs(): Promise<VisualLog[]> {
-  // 1. Query langsung ke Server AI PythonAnywhere 24/7 (Riwayat foto asli ESP32-CAM)
+  const localLogs = getSavedLogs();
+
+  // 1. Query langsung ke Server AI PythonAnywhere 24/7
   const customUrl = getApiBaseUrl().replace(/\/$/, '');
   try {
     const res = await fetch(`${customUrl}/history`, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       if (data.visualLogs && Array.isArray(data.visualLogs) && data.visualLogs.length > 0) {
-        return data.visualLogs;
+        const merged = mergeLogs(localLogs, data.visualLogs);
+        persistLogs(merged);
+        return merged;
       }
     }
   } catch (err) {
@@ -129,14 +233,16 @@ export async function fetchVisualLogs(): Promise<VisualLog[]> {
     if (res.ok) {
       const data = await res.json();
       if (data.visualLogs && Array.isArray(data.visualLogs) && data.visualLogs.length > 0) {
-        return data.visualLogs;
+        const merged = mergeLogs(localLogs, data.visualLogs);
+        persistLogs(merged);
+        return merged;
       }
     }
   } catch (err) {
     console.warn('Fetch visual logs fallback:', err);
   }
 
-  return [];
+  return localLogs;
 }
 
 export async function sendTelemetry(sensorPayload: {

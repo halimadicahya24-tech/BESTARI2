@@ -17,7 +17,7 @@ export const VisualLogModal: React.FC<VisualLogModalProps> = ({ log, onClose }) 
       <div className="bg-white w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-scale-up border border-[#D8E4E0]">
         {/* Modal Header Image */}
         <div className="relative aspect-[16/10] bg-black">
-          <img src={log.image_url} alt={log.id} className="w-full h-full object-cover scale-y-[-1]" />
+          <img src={log.image_url} alt={log.id} className="w-full h-full object-cover" />
           <button
             onClick={onClose}
             className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black"
@@ -59,7 +59,9 @@ export const VisualLogModal: React.FC<VisualLogModalProps> = ({ log, onClose }) 
             </div>
             <div className="flex justify-between">
               <span className="text-[#6B878C] font-sans font-semibold">Hama Terdeteksi:</span>
-              <span className="text-[#D9534F] font-bold">{log.hama_terdeteksi} Ekor</span>
+              <span className={`font-bold ${log.hama_terdeteksi > 0 ? 'text-[#D9534F]' : 'text-[#2D8A68]'}`}>
+                {log.hama_terdeteksi} Ekor (Bebas Hama)
+              </span>
             </div>
           </div>
 

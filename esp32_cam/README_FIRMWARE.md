@@ -1,57 +1,73 @@
-# 🌿 BESTARI - Panduan Firmware ESP32-CAM Main Board
-**Samsung Solve for Tomorrow 2026**
+# 🌿 BESTARI - Panduan Firmware Dual-ESP32 Architecture
+Samsung Solve for Tomorrow 2026
 
-Firmware ini dikonfigurasi khusus untuk **ESP32-CAM (AI-Thinker OV2640 Module)** yang difungsikan sebagai **Main Controller Board** sekaligus **Kamera AI Deteksi Hama**.
+Sistem hardware BESTARI menggunakan Arsitektur Dual Microcontroller (Dual-ESP32) untuk pemisahan tugas yang optimal, resiliensi memori, dan keamanan pinout IO:
+
+1. ESP32 Main Controller Board (DevKit 30-Pin): Berfungsi sebagai pusat kontrol utama, pemrosesan sensor (Kelembaban tanah & Level tangki), penggerak aktuator (Dinamo mixer, Pompa biopestisida, Pompa air bersih), dan komunikasi telemetri Cloud.
+2. ESP32-CAM Sensor Node (AI-Thinker OV2640 Module): Berfungsi khusus sebagai modul sensor pengambil foto sampel daun real-time dan pengunggah data visual ke server AI (`/detect`).
 
 ---
 
-## 📌 Pemetaan Pinout Hardware Terbaru (Pin Fisik Header AI-Thinker)
+## 📌 1. Pemetaan Pinout ESP32 Main Controller (DevKit 30-Pin)
 
-| Komponen Hardware | Pin Komponen | Pin ESP32-CAM | Deskripsi Aksi / Status Pin |
+| Komponen Hardware | Pin Komponen | Pin ESP32 DevKit | Deskripsi Aksi / Status Pin |
 | :--- | :--- | :---: | :--- |
-| **Dinamo Pengaduk** | Relay IN1 | **GPIO 14** | **(TETAP)** Mengaduk larutan biopestisida |
-| **Pompa Semprot / Air** | Relay IN2 | **GPIO 15** | **(TETAP)** Menyemprot biopestisida / menyiram tanah |
-| **Sensor Ultrasonik 1 & 2** | Combined TRIG | **GPIO 12** | **(TETAP)** Sinyal triger bersama untuk HC-SR04 1 & 2 |
-| **Ultrasonik 1 (Tangki Biopestisida)** | ECHO | **GPIO 16** | **(DIUBAH)** Level biopestisida (Pin Header IO16 / U2RXD) |
-| **Ultrasonik 2 (Tangki Air Bersih)** | ECHO | **GPIO 3** | **(DIUBAH)** Level air bersih (Pin Header IO3 / U0RXD) |
-| **Sensor Kelembaban Tanah** | Analog Out (A0) | **GPIO 13** | **(TETAP)** Analog Read (ADC2_CH4 dengan trik Wi-Fi Pause) |
-| **Modul Kamera AI (OV2640)** | PCLK / Hardware | **GPIO 2** | **(TETAP)** Pixel clock internal OV2640 camera |
-| **Flash LED (Lampu Kilat)** | Flash Transistor | **GPIO 4** | **(TETAP)** Lampu kilat pencahayaan sampel daun |
+| Dinamo Pengaduk Biopestisida | Relay 1 IN1 | GPIO 23 | Mengaduk racikan biopestisida di tangki sebelum penyemprotan |
+| Pompa Semprot Biopestisida | Relay 2 IN2 | GPIO 4 | Mengalirkan biopestisida via selang biopestisida ke 1 Dual-Input Nozzle |
+| Pompa Siram Air Bersih | Relay 3 IN3 | GPIO 19 | Mengalirkan air bersih via selang air ke 1 Dual-Input Nozzle |
+| Ultrasonik 1 (Tangki Biopest) | TRIG / ECHO | TRIG: GPIO 27<br>ECHO: GPIO 33 | Sensor ketinggian level cairan tangki biopestisida (HC-SR04) |
+| Ultrasonik 2 (Tangki Air) | TRIG / ECHO | TRIG: GPIO 25<br>ECHO: GPIO 26 | Sensor ketinggian level cairan tangki air bersih (HC-SR04) |
+| Sensor Kelembaban Tanah | Analog Out (A0) | GPIO 34 | Reading Analog Kelembaban (ADC1_CH6 - Aman dipakai bersama Wi-Fi) |
+| Nozzle Semprot & Siram | Output Muara | (Muara 2 Selang) | Single Nozzle yang menerima aliran biopestisida & air |
 
 ---
 
-## ⚠️ Catatan PENTING Pengaturan IDE Arduino & Hardware
+## 📌 2. Pemetaan Pinout ESP32-CAM (AI-Thinker Camera Node)
 
-1. **Pengaturan Arduino IDE:**
-   - **Board**: `AI Thinker ESP32-CAM`
-   - **PSRAM**: `Disabled` *(Wajib Disabled karena GPIO 16 digunakan untuk ECHO Sensor Ultrasonik 1)*.
-   - **Partition Scheme**: `Huge APP (3MB No OTA/1MB SPIFFS)`
-
-2. **Keamanan Tegangan ECHO Ultrasonik:**
-   - Sensor HC-SR04 bekerja pada 5V dan mengeluarkan sinyal ECHO 5V.
-   - Sangat disarankan memasang **Voltage Divider** (resistor 1kΩ & 2kΩ) pada pin ECHO (GPIO 16 & GPIO 3) agar menurunkan sinyal dari 5V ke 3.3V demi keamanan pin ESP32-CAM.
-
-3. **Solusi ADC2 (GPIO 13) saat Wi-Fi Aktif:**
-   - GPIO 13 adalah pin Analog (ADC2_CH4). Firmware secara otomatis menjeda driver Wi-Fi (`esp_wifi_stop()`) selama beberapa milidetik saat membaca ADC2, lalu menyalakannya kembali (`esp_wifi_start()`) sehingga nilai ADC tidak bernilai 0 / 4095.
+| Komponen Hardware | Pin Module | Pin ESP32-CAM | Deskripsi / Status |
+| :--- | :--- | :---: | :--- |
+| Modul Kamera AI (OV2640) | Parallel DVP | GPIO 5, 18, 19, 21, 36, 39, 34, 35, 25, 23, 2, 0, 26, 27, 32 | Bus data & kontrol kamera real-time |
+| Flash LED (Lampu Kilat) | Transistor Flash | GPIO 4 | Pencahayaan foto sampel daun saat gelap |
 
 ---
 
-## 🧪 Diagram Alur Keputusan Otomatis
+## ⚠️ Catatan PENTING Pengaturan IDE Arduino
+
+1. Main Controller Board (ESP32 DevKit):
+   - Board: `ESP32 Dev Module`
+   - Upload Speed: `921600`
+   - Partition Scheme: `Default 4MB with spiffs`
+
+2. Camera Sensor Node (ESP32-CAM):
+   - Board: `AI Thinker ESP32-CAM`
+   - PSRAM: `Enabled` (Dapat diaktifkan 100% karena pin GPIO 16/17 tidak bentrok dengan sensor ultrasonik).
+   - Partition Scheme: `Huge APP (3MB No OTA/1MB SPIFFS)`
+
+---
+
+## 🧪 Diagram Alur Keputusan Otomatis Sistem Dual-ESP32
 
 ```mermaid
 graph TD
-    A[Mulai: Baca Sensor GPIO 13, GPIO 12/16, GPIO 12/3] --> B[Cek Status Server PythonAnywhere /status/latest]
-    B --> C{Apakah Hama Terdeteksi?}
-    C -->|YA / Manual Trigger| D[MODE BIOPESTISIDA]
-    D --> D1[1. Dinamo Pengaduk GPIO 14 ON - 4s]
-    D1 --> D2[2. Pompa Semprot GPIO 15 ON - 5s]
-    D2 --> D3[3. Matikan Pompa & Dinamo]
-    
-    C -->|TIDAK / Bebas Hama| E{Cek Kelembaban Tanah GPIO 13}
-    E -->|Tanah Kering ADC >= 2500| F[MODE SIRAM AIR TANAH]
-    F --> F1[1. Dinamo GPIO 14 Tetap OFF]
-    F1 --> F2[2. Pompa Air GPIO 15 ON - 4s]
-    F2 --> F3[3. Matikan Pompa Air]
-    
-    E -->|Tanah Lembab ADC < 2500| G[MODE STANDBY - Seluruh Aktuator OFF]
+    subgraph "ESP32-CAM Sensor Node"
+        CAM[Kamera OV2640 / Presentation Guard] -->|Upload Photo POST /detect| SERVER[PythonAnywhere AI Server]
+    end
+
+    subgraph "ESP32 Main Controller"
+        A[Baca Sensor: GPIO 34 Soil, GPIO 27/33 US1, GPIO 25/26 US2] --> B[POST Telemetri ke /telemetry]
+        B --> C[Fetch Status GET /status/latest]
+        C --> D{Apakah Hama Terdeteksi?}
+        
+        D -->|YA / Manual Web Trigger| E[MODE BIOPESTISIDA]
+        E --> E1[1. Dinamo Pengaduk GPIO 23 ON - 3s]
+        E1 --> E2[2. Pompa Biopestisida GPIO 4 ON - 4s -> Nozzle]
+        E2 --> E3[3. Matikan Seluruh Aktuator Biopestisida]
+        
+        D -->|TIDAK / Bebas Hama| F{Kelembaban Tanah GPIO 34 < 40%?}
+        F -->|YA / Tanah Kering| G[MODE SIRAM AIR TANAH]
+        G --> G1[1. Pompa Air Bersih GPIO 19 ON - 3s -> Nozzle]
+        G1 --> G2[2. Matikan Pompa Air]
+        
+        F -->|TIDAK / Lembab Ideal| H[MODE STANDBY - Seluruh Aktuator OFF]
+    end
 ```

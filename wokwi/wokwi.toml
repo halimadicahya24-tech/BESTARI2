@@ -1,4 +1,8 @@
 [wokwi]
 version = 1
-firmware = "../esp32_cam/esp32_cam_bestari/esp32_cam_bestari.ino"
-elf = ""
+firmware = '../esp32_main_controller/.pio/build/esp32dev/firmware.elf'
+elf = '../esp32_main_controller/.pio/build/esp32dev/firmware.elf'
+diagram = 'diagram.json'
+
+
+

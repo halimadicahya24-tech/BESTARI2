@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sliders, Cpu, LogOut, CheckCircle2, ShieldCheck, Server, RefreshCw, Globe, ChevronRight } from 'lucide-react';
+import { Sliders, Cpu, LogOut, CheckCircle2, ShieldCheck, Server, RefreshCw, Globe, ChevronRight, Phone, User, MessageSquare } from 'lucide-react';
 import { getApiBaseUrl, setApiBaseUrl, testApiConnection, updateSystemConfig, fetchSystemConfig } from '../lib/api';
 
 interface SettingsScreenProps {
   onLogout: () => void;
   onOpenPinouts: () => void;
+  isConnected?: boolean;
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpenPinouts }) => {
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpenPinouts, isConnected }) => {
   const [autoSprayEnabled, setAutoSprayEnabled] = useState<boolean>(true);
   const [agitateBeforeSpray, setAgitateBeforeSpray] = useState<boolean>(true);
   const [sprayDuration, setSprayDuration] = useState<number>(3);
@@ -30,6 +31,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
     };
     loadConfig();
   }, []);
+
+  useEffect(() => {
+    // Restore status koneksi agar tidak ter-reset saat berpindah halaman/tab
+    if (typeof window !== 'undefined') {
+      const savedStatus = localStorage.getItem('bestari_flask_api_status') as any;
+      const savedFeedback = localStorage.getItem('bestari_flask_api_feedback');
+
+      if (isConnected || savedStatus === 'connected') {
+        setApiStatus('connected');
+        setFeedbackMessage(savedFeedback || 'Terhubung ke ESP32 Live Server!');
+      } else if (savedStatus === 'failed') {
+        setApiStatus('failed');
+        setFeedbackMessage(savedFeedback || 'Tidak dapat terhubung. Menggunakan Mode Standalone Demo.');
+      } else if (savedStatus === 'idle') {
+        setApiStatus('idle');
+        setFeedbackMessage(savedFeedback || 'Mode Standalone / Local Demo');
+      }
+    }
+  }, [isConnected]);
 
   const handleConfigChange = (newConfig: {
     sprayDuration?: number;
@@ -65,9 +85,17 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
     if (isLive) {
       setApiStatus('connected');
       setFeedbackMessage('Terhubung ke ESP32 Live Server!');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bestari_flask_api_status', 'connected');
+        localStorage.setItem('bestari_flask_api_feedback', 'Terhubung ke ESP32 Live Server!');
+      }
     } else {
       setApiStatus('failed');
       setFeedbackMessage('Tidak dapat terhubung. Menggunakan Mode Standalone Demo.');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bestari_flask_api_status', 'failed');
+        localStorage.setItem('bestari_flask_api_feedback', 'Tidak dapat terhubung. Menggunakan Mode Standalone Demo.');
+      }
     }
   };
 
@@ -81,8 +109,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
               <Cpu className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken">Konfigurasi Pinout ESP32-CAM</h3>
-              <p className="text-[11px] text-[#41484B]">Pemetaan Hardware & Sensor Solenoid</p>
+              <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken">Konfigurasi Pinout Dual-ESP32</h3>
+              <p className="text-[11px] text-[#41484B]">ESP32 Main Board & ESP32-CAM Node</p>
             </div>
           </div>
           <button
@@ -96,12 +124,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
 
         <div className="grid grid-cols-2 gap-2 text-xs font-mono">
           <div className="bg-[#F2F4F3] p-2.5 rounded-xl border border-[#E1E3E2]">
-            <span className="text-[9px] text-[#71787B] font-sans font-bold block">SOLENOID VALVE</span>
-            <span className="text-[#163F4C] font-bold">GPIO 14 (RELAY 1)</span>
+            <span className="text-[9px] text-[#71787B] font-sans font-bold block">POMPA BIOPEST (NOZZLE)</span>
+            <span className="text-[#163F4C] font-bold">GPIO 4 (RELAY 2)</span>
           </div>
           <div className="bg-[#F2F4F3] p-2.5 rounded-xl border border-[#E1E3E2]">
             <span className="text-[9px] text-[#71787B] font-sans font-bold block">DINAMO PENGADUK</span>
-            <span className="text-[#163F4C] font-bold">GPIO 12 (RELAY 2)</span>
+            <span className="text-[#163F4C] font-bold">GPIO 23 (RELAY 1)</span>
           </div>
         </div>
       </div>
@@ -228,21 +256,46 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
         </div>
       </div>
 
-      {/* SECTION 4: USER & TEAM CREDIT */}
+      {/* SECTION 4: CONTACT PERSON & TIM BESTARI */}
       <div className="bg-white rounded-2xl p-4 border border-[#E1E3E2] shadow-2xs space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#163F4C] text-[#A3CADA] font-extrabold flex items-center justify-center text-sm shadow-2xs font-hanken">
-            FM
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-[#F2F4F3] flex items-center justify-center text-[#305664]">
+            <Phone className="w-4 h-4" />
           </div>
-          <div>
-            <h4 className="text-xs font-extrabold text-[#191C1C] font-hanken">Fajrin Al Majid (Ketua Tim)</h4>
-            <p className="text-[10px] text-[#71787B]">Tim BESTARI - SMAN Sumatera Selatan</p>
+          <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken">Contact Person</h3>
+        </div>
+
+        <div className="bg-[#F2F4F3] p-3.5 rounded-xl border border-[#E1E3E2] space-y-2.5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#163F4C] text-[#A3CADA] font-extrabold flex items-center justify-center text-xs shadow-2xs font-hanken">
+              FM
+            </div>
+            <div className="flex-1">
+              <span className="text-[9px] text-[#71787B] font-bold block uppercase tracking-wider">Penanggung Jawab / Ketua Tim</span>
+              <h4 className="text-xs font-extrabold text-[#191C1C] font-hanken">Fajrin Al Majid</h4>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-[#E1E3E2] flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-[#41484B] font-medium">
+              <Phone className="w-3.5 h-3.5 text-[#305664]" />
+              <span className="font-mono font-bold text-[#163F4C]">+62 821-7259-5754</span>
+            </div>
+            <a
+              href="https://wa.me/6282172595754"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#305664] text-white hover:bg-[#163F4C] transition-colors flex items-center gap-1 shadow-2xs"
+            >
+              <MessageSquare className="w-3 h-3" />
+              <span>WhatsApp</span>
+            </a>
           </div>
         </div>
 
         <div className="bg-[#F2F4F3] p-3 rounded-xl border border-[#E1E3E2] text-[11px] text-[#41484B] space-y-1">
           <p className="font-bold text-[#163F4C] font-hanken">BESTARI Inovasi Pertanian Presisi</p>
-          <p className="text-[10px]">Anggota: Faizahra Safina Yuwono, Halim Adi Cahya, Sri Puji Astuti</p>
+          <p className="text-[10px]">Tim SMAN Sumatera Selatan: Fajrin Al Majid, Faizahra Safina Yuwono, Halim Adi Cahya, Sri Puji Astuti</p>
         </div>
 
         <button

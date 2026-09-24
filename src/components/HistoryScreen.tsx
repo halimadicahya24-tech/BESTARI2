@@ -107,7 +107,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ visualLogs, onSele
                   <img
                     src={log.image_url}
                     alt={log.cam_id}
-                    className="w-full h-full object-cover scale-y-[-1] group-hover:scale-y-[-1] group-hover:scale-x-[1.05] transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <span
                     className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-extrabold ${

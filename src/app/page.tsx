@@ -31,12 +31,8 @@ export default function Home() {
 
     const checkStatus = async () => {
       const res = await fetchLatestStatus();
-      if (res.isLive) {
-        setSystemStatus(res.data);
-        setIsConnected(true);
-      } else {
-        setIsConnected(false);
-      }
+      setSystemStatus(res.data);
+      setIsConnected(res.isLive);
 
       const logs = await fetchVisualLogs();
       if (logs.length > 0) {
@@ -102,6 +98,7 @@ export default function Home() {
           <SettingsScreen
             onLogout={() => setIsLoggedIn(false)}
             onOpenPinouts={() => setIsPinoutModalOpen(true)}
+            isConnected={isConnected}
           />
         )}
       </div>

@@ -1,0 +1,5 @@
+[wokwi]
+version = 1
+firmware = 'esp32_main_controller/.pio/build/esp32dev/firmware.elf'
+elf = 'esp32_main_controller/.pio/build/esp32dev/firmware.elf'
+diagram = 'esp32_main_controller/diagram.json'

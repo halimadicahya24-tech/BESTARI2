@@ -1,36 +1,36 @@
 import { SystemStatusResponse, VisualLog } from './types';
 
-// High resolution realistic leaf SVG Data URLs & dynamic canvas presets
-export const LEAF_IMAGE_SAFE = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="%23223028"/><rect x="50" y="40" width="700" height="420" rx="16" fill="%233A5043"/><path d="M120 180 Q 250 80 400 160 T 680 120 Q 720 280 600 380 T 250 400 Q 100 320 120 180 Z" fill="%234E7C59" stroke="%23A8E6CF" stroke-width="3"/><path d="M 250 400 Q 380 260 600 120" stroke="%2385D6B1" stroke-width="4" fill="none"/><path d="M 320 320 Q 220 280 180 240" stroke="%2385D6B1" stroke-width="2" fill="none"/><path d="M 380 260 Q 480 240 540 210" stroke="%2385D6B1" stroke-width="2" fill="none"/><path d="M 440 200 Q 360 160 300 130" stroke="%2385D6B1" stroke-width="2" fill="none"/><circle cx="150" cy="120" r="14" fill="%232D4336"/><circle cx="650" cy="380" r="18" fill="%232D4336"/><text x="40" y="485" font-family="sans-serif" font-size="14" fill="%23A8E6CF" font-weight="bold">BESTARI AI - BEDENGAN TANAMAN CABAI ZONE A (HEALTHY)</text></svg>`;
-
-export const LEAF_IMAGE_WARNING = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="%23241F20"/><rect x="50" y="40" width="700" height="420" rx="16" fill="%233B443B"/><path d="M120 180 Q 250 80 400 160 T 680 120 Q 720 280 600 380 T 250 400 Q 100 320 120 180 Z" fill="%234A7052" stroke="%237CA682" stroke-width="3"/><path d="M 250 400 Q 380 260 600 120" stroke="%237CA682" stroke-width="4" fill="none"/><circle cx="340" cy="220" r="28" fill="%23241F20"/><circle cx="480" cy="290" r="34" fill="%23241F20"/><path d="M 330 200 Q 340 230 350 210" stroke="%23856D3B" stroke-width="3" fill="none"/><g stroke="%23D9534F" stroke-width="3" fill="rgba(217,83,79,0.15)"><rect x="300" y="180" width="80" height="80" rx="6"/><text x="305" y="175" font-family="sans-serif" font-size="13" font-weight="bold" fill="%23FF6B6B">Ulat Grayak (89%)</text><rect x="430" y="240" width="100" height="90" rx="6"/><text x="435" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="%23FF6B6B">Ulat Grayak (92%)</text></g><ellipse cx="340" cy="220" rx="14" ry="7" fill="%23A45C3D"/><ellipse cx="480" cy="285" rx="18" ry="9" fill="%23A45C3D"/><text x="40" y="485" font-family="sans-serif" font-size="14" fill="%23FF6B6B" font-weight="bold">BESTARI AI - WARN: 2 PESTS DETECTED (YOLOv8 ENGINE)</text></svg>`;
+// Real high resolution photos from dummy_photo folder
+export const LEAF_IMAGE_SAFE = '/dummy_photo/bestari_esp32cam_highres.jpg';
+export const LEAF_IMAGE_WARNING = '/dummy_photo/bestari_esp32cam_highres.jpg';
 
 export const initialSystemStatus: SystemStatusResponse = {
   plant_status: "safe",
-  threat_message: "Tanaman dalam kondisi sehat & bebas hama",
-  confidence: 0.98,
-  biopesticide_level: 85,
+  threat_message: "Tanaman dalam kondisi sangat sehat & bebas hama",
+  confidence: 0.99,
+  biopesticide_level: 88,
   biopesticide_capacity_liters: 5.0,
-  water_level: 60,
+  water_level: 92,
   water_capacity_liters: 20.0,
-  temp: 24.0,
-  humidity: 68.0,
-  active_node: "v1.0",
-  last_updated: "Baru saja",
+  soil_moisture: 78,
+  temp: 26.5,
+  humidity: 72.0,
+  active_node: "ESP32-CAM Node A1",
+  last_updated: "12:11 WIB",
   camera_feeds: [
     {
       cam_id: "Cam 1",
-      name: "ESP32-CAM BESTARI",
+      name: "ESP32-CAM Bedengan Cabai A1",
       is_active: true,
       image_url: LEAF_IMAGE_SAFE,
-      last_capture_time: "Baru saja",
+      last_capture_time: "12:11 WIB",
       detections: []
     }
   ],
   pump_status: {
     auto_sprays_count: 0,
     manual_overrides_count: 0,
-    last_spray_timestamp: "Belum ada penyemprotan",
+    last_spray_timestamp: "Sistem Standby (Tidak Perlu Spray)",
     last_spray_duration_sec: 0,
     is_active: false,
     mode: "Auto"
@@ -38,25 +38,130 @@ export const initialSystemStatus: SystemStatusResponse = {
   detections: []
 };
 
-// Initial visual logs start empty until ESP32-CAM streams real photos
-export const initialVisualLogs: VisualLog[] = [];
+// Rich historical visual logs (All 8 photos from dummy_photo, 100% Healthy / 0 Hama)
+export const initialVisualLogs: VisualLog[] = [
+  {
+    id: "log_hist_1",
+    timestamp: "2026-09-23T12:11:00Z",
+    formatted_time: "12:11 WIB",
+    date: "Sep 23, 2026",
+    cam_id: "Cam 1",
+    status: "safe",
+    hama_terdeteksi: 0,
+    confidence: 0.99,
+    image_url: "/dummy_photo/bestari_esp32cam_highres.jpg",
+    threat_type: "Daun Sehat / Safe (Bebas Hama)",
+    detections: []
+  },
+  {
+    id: "log_hist_2",
+    timestamp: "2026-09-23T11:45:00Z",
+    formatted_time: "11:45 WIB",
+    date: "Sep 23, 2026",
+    cam_id: "Cam 1",
+    status: "safe",
+    hama_terdeteksi: 0,
+    confidence: 0.98,
+    image_url: "/dummy_photo/bestari_esp32cam_highres (1).jpg",
+    threat_type: "Daun Sehat / Safe (Bebas Hama)",
+    detections: []
+  },
+  {
+    id: "log_hist_3",
+    timestamp: "2026-09-23T10:30:00Z",
+    formatted_time: "10:30 WIB",
+    date: "Sep 23, 2026",
+    cam_id: "Cam 1",
+    status: "safe",
+    hama_terdeteksi: 0,
+    confidence: 0.97,
+    image_url: "/dummy_photo/bestari_esp32cam_highres (2).jpg",
+    threat_type: "Daun Sehat / Safe (Bebas Hama)",
+    detections: []
+  },
+  {
+    id: "log_hist_4",
+    timestamp: "2026-09-23T09:15:00Z",
+    formatted_time: "09:15 WIB",
+    date: "Sep 23, 2026",
+    cam_id: "Cam 1",
+    status: "safe",
+    hama_terdeteksi: 0,
+    confidence: 0.99,
+    image_url: "/dummy_photo/bestari_esp32cam_highres (3).jpg",
+    threat_type: "Daun Sehat / Safe (Bebas Hama)",
+    detections: []
+  },
+  {
+    id: "log_hist_5",
+    timestamp: "2026-09-23T08:00:00Z",
+    formatted_time: "08:00 WIB",
+    date: "Sep 23, 2026",
+    cam_id: "Cam 1",
+    status: "safe",
+    hama_terdeteksi: 0,
+    confidence: 0.98,
+    image_url: "/dummy_photo/bestari_esp32cam_highres (4).jpg",
+    threat_type: "Daun Sehat / Safe (Bebas Hama)",
+    detections: []
+  },
+  {
+    id: "log_hist_6",
+    timestamp: "2026-09-22T21:30:00Z",
+    formatted_time: "21:30 WIB",
+    date: "Sep 22, 2026",
+    cam_id: "Cam 1",
+    status: "safe",
+    hama_terdeteksi: 0,
+    confidence: 0.99,
+    image_url: "/dummy_photo/bestari_esp32cam_highres (5).jpg",
+    threat_type: "Daun Sehat / Safe (Bebas Hama)",
+    detections: []
+  },
+  {
+    id: "log_hist_7",
+    timestamp: "2026-09-22T19:15:00Z",
+    formatted_time: "19:15 WIB",
+    date: "Sep 22, 2026",
+    cam_id: "Cam 1",
+    status: "safe",
+    hama_terdeteksi: 0,
+    confidence: 0.98,
+    image_url: "/dummy_photo/bestari_esp32cam_highres (6).jpg",
+    threat_type: "Daun Sehat / Safe (Bebas Hama)",
+    detections: []
+  },
+  {
+    id: "log_hist_8",
+    timestamp: "2026-09-22T16:45:00Z",
+    formatted_time: "16:45 WIB",
+    date: "Sep 22, 2026",
+    cam_id: "Cam 1",
+    status: "safe",
+    hama_terdeteksi: 0,
+    confidence: 0.97,
+    image_url: "/dummy_photo/bestari_esp32cam_highres (7).jpg",
+    threat_type: "Daun Sehat / Safe (Bebas Hama)",
+    detections: []
+  }
+];
 
 export const healthScoreMatrix = [
-  { time: "06:00", score: 96, status: "safe" },
-  { time: "08:15", score: 98, status: "safe" },
-  { time: "10:30", score: 78, status: "warning" },
-  { time: "14:00", score: 92, status: "safe" },
-  { time: "17:00", score: 95, status: "safe" }
+  { time: "06:00", score: 98, status: "safe" },
+  { time: "09:00", score: 99, status: "safe" },
+  { time: "12:00", score: 97, status: "safe" },
+  { time: "15:00", score: 98, status: "safe" },
+  { time: "18:00", score: 99, status: "safe" }
 ];
 
 export const threatFrequencyData = [
-  { time: "00:00", quantity: 1, peak: false },
-  { time: "04:00", quantity: 2, peak: false },
-  { time: "08:00", quantity: 4, peak: false },
-  { time: "12:00", quantity: 6, peak: false },
-  { time: "14:00", quantity: 9, peak: true },
-  { time: "18:00", quantity: 7, peak: false },
-  { time: "22:00", quantity: 3, peak: false }
+  { time: "00:00", quantity: 0, peak: false },
+  { time: "04:00", quantity: 0, peak: false },
+  { time: "08:00", quantity: 0, peak: false },
+  { time: "12:00", quantity: 0, peak: false },
+  { time: "14:00", quantity: 0, peak: false },
+  { time: "18:00", quantity: 0, peak: false },
+  { time: "22:00", quantity: 0, peak: false }
 ];
 
 export const pumpActivityData = [
@@ -68,3 +173,4 @@ export const pumpActivityData = [
   { day: "Sat", auto: 100 },
   { day: "Sun", auto: 100 }
 ];
+

@@ -76,31 +76,30 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // SVG Data URLs for leaf images
-    const LEAF_IMAGE_SAFE = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="%23223028"/><rect x="50" y="40" width="700" height="420" rx="16" fill="%233A5043"/><path d="M120 180 Q 250 80 400 160 T 680 120 Q 720 280 600 380 T 250 400 Q 100 320 120 180 Z" fill="%234E7C59" stroke="%23A8E6CF" stroke-width="3"/><path d="M 250 400 Q 380 260 600 120" stroke="%2385D6B1" stroke-width="4" fill="none"/><path d="M 320 320 Q 220 280 180 240" stroke="%2385D6B1" stroke-width="2" fill="none"/><path d="M 380 260 Q 480 240 540 210" stroke="%2385D6B1" stroke-width="2" fill="none"/><circle cx="150" cy="120" r="14" fill="%232D4336"/><circle cx="650" cy="380" r="18" fill="%232D4336"/><text x="40" y="485" font-family="sans-serif" font-size="14" fill="%23A8E6CF" font-weight="bold">BESTARI AI - BEDENGAN TANAMAN CABAI ZONE A (HEALTHY)</text></svg>`;
-
-    const LEAF_IMAGE_WARNING = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect width="800" height="500" fill="%23241F20"/><rect x="50" y="40" width="700" height="420" rx="16" fill="%233B443B"/><path d="M120 180 Q 250 80 400 160 T 680 120 Q 720 280 600 380 T 250 400 Q 100 320 120 180 Z" fill="%234A7052" stroke="%237CA682" stroke-width="3"/><path d="M 250 400 Q 380 260 600 120" stroke="%237CA682" stroke-width="4" fill="none"/><circle cx="340" cy="220" r="28" fill="%23241F20"/><circle cx="480" cy="290" r="34" fill="%23241F20"/><path d="M 330 200 Q 340 230 350 210" stroke="%23856D3B" stroke-width="3" fill="none"/><g stroke="%23D9534F" stroke-width="3" fill="rgba(217,83,79,0.15)"><rect x="300" y="180" width="80" height="80" rx="6"/><text x="305" y="175" font-family="sans-serif" font-size="13" font-weight="bold" fill="%23FF6B6B">Ulat Grayak (89%)</text><rect x="430" y="240" width="100" height="90" rx="6"/><text x="435" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="%23FF6B6B">Ulat Grayak (92%)</text></g><ellipse cx="340" cy="220" rx="14" ry="7" fill="%23A45C3D"/><ellipse cx="480" cy="285" rx="18" ry="9" fill="%23A45C3D"/><text x="40" y="485" font-family="sans-serif" font-size="14" fill="%23FF6B6B" font-weight="bold">BESTARI AI - WARN: 2 PESTS DETECTED (YOLOv8 ENGINE)</text></svg>`;
+    // SVG Data URLs / Photo paths for leaf images
+    const LEAF_IMAGE_SAFE = '/dummy_photo/bestari_esp32cam_highres.jpg';
+    const LEAF_IMAGE_WARNING = '/dummy_photo/bestari_esp32cam_highres.jpg';
 
     // Initial Data
     const initialStatus = {
-      plant_status: "warning",
-      threat_message: "2 pests found (Ulat Grayak)",
-      confidence: 0.89,
+      plant_status: "safe",
+      threat_message: "Tanaman bebas hama & sangat sehat",
+      confidence: 0.99,
       biopesticide_level: 85,
       temp: 24.0,
       humidity: 68.0,
       active_node: "v1.0",
       camera_feeds: [
-        { cam_id: "Cam 1", name: "Zone A1", image_url: LEAF_IMAGE_WARNING },
+        { cam_id: "Cam 1", name: "Zone A1", image_url: LEAF_IMAGE_SAFE },
         { cam_id: "Cam 2", name: "Zone B2", image_url: LEAF_IMAGE_SAFE },
         { cam_id: "Cam 3", name: "Zone C1", image_url: LEAF_IMAGE_SAFE }
       ]
     };
 
     const visualLogs = [
-      { id: "log_1029", formatted_time: "10:30 AM", date: "Oct 24, 2026", cam_id: "Cam 1", status: "warning", hama_terdeteksi: 2, confidence: 0.89, image_url: LEAF_IMAGE_WARNING, threat_type: "Ulat Grayak (Spodoptera litura)" },
-      { id: "log_1028", formatted_time: "08:15 AM", date: "Oct 24, 2026", cam_id: "Cam 2", status: "safe", hama_terdeteksi: 0, confidence: 0.98, image_url: LEAF_IMAGE_SAFE, threat_type: "Daun Sehat / Safe" },
-      { id: "log_1027", formatted_time: "06:00 AM", date: "Oct 24, 2026", cam_id: "Cam 3", status: "safe", hama_terdeteksi: 0, confidence: 0.96, image_url: LEAF_IMAGE_SAFE, threat_type: "Daun Sehat / Safe" }
+      { id: "log_1029", formatted_time: "10:30 AM", date: "Sep 23, 2026", cam_id: "Cam 1", status: "safe", hama_terdeteksi: 0, confidence: 0.99, image_url: "/dummy_photo/bestari_esp32cam_highres.jpg", threat_type: "Daun Sehat / Safe (Bebas Hama)" },
+      { id: "log_1028", formatted_time: "08:15 AM", date: "Sep 23, 2026", cam_id: "Cam 2", status: "safe", hama_terdeteksi: 0, confidence: 0.98, image_url: "/dummy_photo/bestari_esp32cam_highres (1).jpg", threat_type: "Daun Sehat / Safe (Bebas Hama)" },
+      { id: "log_1027", formatted_time: "06:00 AM", date: "Sep 23, 2026", cam_id: "Cam 3", status: "safe", hama_terdeteksi: 0, confidence: 0.96, image_url: "/dummy_photo/bestari_esp32cam_highres (2).jpg", threat_type: "Daun Sehat / Safe (Bebas Hama)" }
     ];
 
     function App() {
@@ -346,9 +345,10 @@
               </div>
 
               <div className="bg-white p-4 rounded-2xl border border-[#D8E4E0] space-y-2">
-                <h3 className="font-extrabold text-sm text-[#1E4852]">Tim BESTARI</h3>
-                <p className="text-xs text-[#6B878C]">Ketua: Fajrin Al Majid (SMAN Sumatera Selatan)</p>
-                <p className="text-xs text-[#6B878C]">BESTARI Eco-Precision</p>
+                <h3 className="font-extrabold text-sm text-[#1E4852]">Contact Person & Tim BESTARI</h3>
+                <p className="text-xs font-bold text-[#1E4852]">Nama: Fajrin Al Majid</p>
+                <p className="text-xs font-mono text-[#2A5B64]">Nomor Telepon: +62 821-7259-5754</p>
+                <p className="text-[11px] text-[#6B878C]">SMAN Sumatera Selatan - BESTARI Eco-Precision</p>
               </div>
 
               <button onClick={() => setIsLoggedIn(false)} className="w-full bg-[#FDE8E8] text-[#D9534F] font-bold py-3 rounded-xl text-xs">

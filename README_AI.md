@@ -1,7 +1,7 @@
 # 🤖 Modul AI & Pelatihan Model YOLO - Projek BESTARI 🌿
 ### Samsung Solve for Tomorrow (SFT) 2026 — SMAN Sumatera Selatan
 
-Modul ini menyediakan skrip Python lengkap untuk melatih (*training*), mengevaluasi, mengekspor, serta mendistribusikan model Computer Vision **YOLOv8 / YOLO11** untuk deteksi otomatis **Hama Ulat Grayak (*Spodoptera frugiperda*)** pada sistem monitoring BESTARI.
+Modul ini menyediakan skrip Python lengkap untuk melatih (training), mengevaluasi, mengekspor, serta mendistribusikan model Computer Vision YOLOv8 / YOLO11 untuk deteksi otomatis Hama Ulat Grayak (Spodoptera frugiperda) pada sistem monitoring BESTARI.
 
 ---
 
@@ -45,7 +45,7 @@ dataset/
     └── labels/
 ```
 
-**Isi file `dataset/data.yaml`:**
+Isi file `dataset/data.yaml`:
 ```yaml
 path: ./dataset
 train: train/images
@@ -84,18 +84,18 @@ python train_yolo.py \
 ```
 
 ### 📋 Penjelasan Opsi Parameter:
-* `--model`: Pilih varian YOLO (`yolov8n.pt` paling ringan untuk edge, `yolov8s.pt` lebih akurat).
-* `--imgsz`: Ukuran piksel gambar (640px optimal untuk ESP32-CAM).
-* `--device`: Masukkan `0` jika menggunakan NVIDIA GPU CUDA, atau `cpu` jika tanpa GPU.
-* `--export`: Otomatis mengekspor hasil ke format `.onnx` dan `.tflite` setelah pelatihan selesai.
+- `--model`: Pilih varian YOLO (`yolov8n.pt` paling ringan untuk edge, `yolov8s.pt` lebih akurat).
+- `--imgsz`: Ukuran piksel gambar (640px optimal untuk ESP32-CAM).
+- `--device`: Masukkan `0` jika menggunakan NVIDIA GPU CUDA, atau `cpu` jika tanpa GPU.
+- `--export`: Otomatis mengekspor hasil ke format `.onnx` dan `.tflite` setelah pelatihan selesai.
 
 ---
 
 ## 📊 Hasil Output & Bobot Model
 
-Setelah proses pelatihan selesai, file bobot model paling optimal (*best checkpoint*) akan tersimpan di:
-* `runs/bestari_yolo/bestari_ulat_grayak_model/weights/best.pt` (PyTorch)
-* `runs/bestari_yolo/bestari_ulat_grayak_model/weights/best.onnx` (ONNX format)
+Setelah proses pelatihan selesai, file bobot model paling optimal (best checkpoint) akan tersimpan di:
+- `runs/bestari_yolo/bestari_ulat_grayak_model/weights/best.pt` (PyTorch)
+- `runs/bestari_yolo/bestari_ulat_grayak_model/weights/best.onnx` (ONNX format)
 
 Di dalam folder `runs/bestari_yolo/bestari_ulat_grayak_model/` juga akan terdapat grafik otomatis:
 - `results.png` (Grafik loss & metrik mAP)
@@ -119,5 +119,5 @@ Server akan aktif di `http://localhost:5000` dengan endpoint:
 ---
 
 ## 👨‍💻 Kontributor tim SFT 2026
-- **Fajrin Al Majid** (Lead Architect & AI Engineer)
-- **Tim BESTARI SMAN Sumatera Selatan**
+- Fajrin Al Majid (Lead Architect & AI Engineer)
+- Tim BESTARI SMAN Sumatera Selatan
