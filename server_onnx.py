@@ -132,9 +132,9 @@ def load_state_from_disk():
     try:
         if STATE_FILE.exists():
             data = json.loads(STATE_FILE.read_text(encoding='utf-8'))
-            if "latest_telemetry" in data and data["latest_telemetry"].get("image_base64"):
+            if "latest_telemetry" in data and isinstance(data["latest_telemetry"], dict):
                 latest_telemetry.update(data["latest_telemetry"])
-            if "history_logs" in data and isinstance(data["history_logs"], list) and len(data["history_logs"]) > 0:
+            if "history_logs" in data and isinstance(data["history_logs"], list):
                 history_logs = data["history_logs"]
     except Exception as e:
         print(f"[BESTARI DISK LOAD WARN] {e}")
@@ -211,6 +211,7 @@ def index():
 @app.route('/history', methods=['GET'])
 def get_history():
     """Mengembalikan daftar seluruh log riwayat foto real yang pernah ditangkap ESP32-CAM."""
+    load_state_from_disk()
     return jsonify({
         "status": "success",
         "visualLogs": history_logs
@@ -257,15 +258,17 @@ def update_telemetry():
         latest_telemetry['water_vol_ml'] = data['water_vol_ml']
         
     print(f"[BESTARI TELEMETRY] Soil: {latest_telemetry.get('soil_moisture')}% | Bio: {latest_telemetry.get('biopesticide_level')}% ({latest_telemetry.get('biopesticide_vol_ml')} mL) | Water: {latest_telemetry.get('water_level')}% ({latest_telemetry.get('water_vol_ml')} mL)")
+    save_state_to_disk()
     return jsonify({"status": "success", "telemetry": latest_telemetry})
 
 @app.route('/status/latest', methods=['GET'])
 def get_latest_status():
     """Endpoint status telemetri sejalan dengan frontend BESTARI."""
+    load_state_from_disk()
     return jsonify({
-        "plant_status": latest_telemetry["plant_status"],
-        "pest_detected": latest_telemetry["threat_detected"],
-        "ulat_grayak_count": latest_telemetry["ulat_grayak_count"],
+        "plant_status": latest_telemetry.get("plant_status", "safe"),
+        "pest_detected": latest_telemetry.get("threat_detected", False),
+        "ulat_grayak_count": latest_telemetry.get("ulat_grayak_count", 0),
         "biopesticide_level": latest_telemetry.get("biopesticide_level", 85),
         "water_level": latest_telemetry.get("water_level", 90),
         "soil_moisture": latest_telemetry.get("soil_moisture", 65),
@@ -273,18 +276,20 @@ def get_latest_status():
         "water_vol_ml": latest_telemetry.get("water_vol_ml", 740),
         "mode": "auto",
         "esp32_connected": True,
-        "relay_active": latest_telemetry["relay_active"] or (time.time() < system_config['manual_pump_trigger_until']),
-        "temp": latest_telemetry["temp"],
-        "last_detection_time": latest_telemetry["last_detection_time"],
-        "latest_image": latest_telemetry["image_base64"],
+        "relay_active": latest_telemetry.get("relay_active", False) or (time.time() < system_config['manual_pump_trigger_until']),
+        "temp": latest_telemetry.get("temp", 28.5),
+        "last_detection_time": latest_telemetry.get("last_detection_time", "Belum ada deteksi"),
+        "latest_image": latest_telemetry.get("image_base64"),
+        "detections": latest_telemetry.get("detections", []),
         "config": system_config,
         "camera_feeds": [
           {
             "cam_id": "Cam 1",
             "name": "Bedengan Utama Zone A1",
-            "image_url": latest_telemetry["image_base64"] or "/dummy_photo/bestari_esp32cam_highres.jpg",
+            "image_url": latest_telemetry.get("image_base64") or "/dummy_photo/bestari_esp32cam_highres.jpg",
             "status": "active",
-            "last_capture_time": latest_telemetry["last_detection_time"]
+            "last_capture_time": latest_telemetry.get("last_detection_time", "live"),
+            "detections": latest_telemetry.get("detections", [])
           }
         ]
     })
