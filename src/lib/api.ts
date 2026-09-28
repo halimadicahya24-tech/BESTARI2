@@ -21,7 +21,7 @@ export async function testApiConnection(targetUrl?: string): Promise<{ success: 
   const url = (targetUrl || getApiBaseUrl()).replace(/\/$/, '');
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const res = await fetch(`${url}/status/latest`, {
       method: 'GET',
@@ -65,11 +65,6 @@ export function getSavedLogs(): VisualLog[] {
     const raw = localStorage.getItem(LOCAL_STORAGE_LOGS_KEY);
     if (!raw) return initialVisualLogs;
     const parsed: VisualLog[] = JSON.parse(raw);
-    const hasStaleWarnings = parsed.some(log => log.status === 'warning' || log.hama_terdeteksi > 0 || log.image_url.includes('svg'));
-    if (hasStaleWarnings) {
-      localStorage.removeItem(LOCAL_STORAGE_LOGS_KEY);
-      return initialVisualLogs;
-    }
     return parsed.length > 0 ? parsed : initialVisualLogs;
   } catch {
     return initialVisualLogs;
@@ -105,7 +100,7 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
   const customUrl = getApiBaseUrl().replace(/\/$/, '');
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 detik timeout untuk payload foto Base64 besar
 
     const res = await fetch(`${customUrl}/status/latest`, {
       method: 'GET',
@@ -117,18 +112,18 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
 
     if (res.ok) {
       const data = await res.json();
+      const liveBase64 = (data.latest_image && data.latest_image.startsWith('data:image')) ? data.latest_image : null;
+
       const updatedFeeds = (data.camera_feeds && data.camera_feeds.length > 0)
         ? data.camera_feeds.map((feed: any) => ({
             ...feed,
-            image_url: (feed.image_url && feed.image_url.startsWith('data:image')) 
-              ? feed.image_url 
-              : (data.latest_image || feed.image_url || '/mock_cam1.jpg')
+            image_url: liveBase64 || ((feed.image_url && feed.image_url.startsWith('data:image')) ? feed.image_url : '/dummy_photo/bestari_esp32cam_highres.jpg')
           }))
         : [
             {
               cam_id: 'Cam 1',
               name: 'Bedengan Utama Zone A1',
-              image_url: data.latest_image || initialSystemStatus.camera_feeds[0].image_url,
+              image_url: liveBase64 || '/dummy_photo/bestari_esp32cam_highres.jpg',
               status: 'active',
               last_capture_time: data.last_detection_time || 'live'
             }

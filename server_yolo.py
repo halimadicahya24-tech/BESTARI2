@@ -283,7 +283,7 @@ def get_latest_status():
           {
             "cam_id": "Cam 1",
             "name": "Bedengan Utama Zone A1",
-            "image_url": latest_telemetry["image_base64"] or "/mock_cam1.jpg",
+            "image_url": latest_telemetry["image_base64"] or "/dummy_photo/bestari_esp32cam_highres.jpg",
             "status": "active",
             "last_capture_time": latest_telemetry["last_detection_time"]
           }

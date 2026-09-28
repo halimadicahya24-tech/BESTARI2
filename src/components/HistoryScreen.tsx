@@ -108,6 +108,10 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({ visualLogs, onSele
                     src={log.image_url}
                     alt={log.cam_id}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/dummy_photo/bestari_esp32cam_highres.jpg';
+                    }}
                   />
                   <span
                     className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-extrabold ${

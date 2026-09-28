@@ -101,6 +101,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               }
               alt={`ESP32-CAM ${selectedCamId}`}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/dummy_photo/bestari_esp32cam_highres.jpg';
+              }}
             />
           )}
 

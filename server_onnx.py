@@ -112,6 +112,39 @@ system_config = {
     "manual_pump_trigger_until": 0
 }
 
+# Menyimpan riwayat log foto real-time dari ESP32-CAM (24/7)
+history_logs = []
+
+STATE_FILE = Path("latest_detection.json")
+
+def save_state_to_disk():
+    try:
+        data = {
+            "latest_telemetry": latest_telemetry,
+            "history_logs": history_logs
+        }
+        STATE_FILE.write_text(json.dumps(data), encoding='utf-8')
+    except Exception as e:
+        print(f"[BESTARI DISK SAVE WARN] {e}")
+
+def load_state_from_disk():
+    global latest_telemetry, history_logs
+    try:
+        if STATE_FILE.exists():
+            data = json.loads(STATE_FILE.read_text(encoding='utf-8'))
+            if "latest_telemetry" in data and data["latest_telemetry"].get("image_base64"):
+                latest_telemetry.update(data["latest_telemetry"])
+            if "history_logs" in data and isinstance(data["history_logs"], list) and len(data["history_logs"]) > 0:
+                history_logs = data["history_logs"]
+    except Exception as e:
+        print(f"[BESTARI DISK LOAD WARN] {e}")
+
+# Muat data tersimpan saat WSGI worker startup
+try:
+    load_state_from_disk()
+except Exception as e:
+    print(f"[BESTARI STATE WARN] {e}")
+
 def forward_to_vercel(payload):
     """Mengirim hasil deteksi dan foto ke Vercel App secara asynchronous"""
     if not VERCEL_APP_URL:
@@ -132,9 +165,6 @@ def forward_to_vercel(payload):
             print(f"[BESTARI ONNX WEBHOOK] Berhasil terkirim ke Vercel ({url}): {response.status}")
     except Exception as e:
         print(f"[BESTARI ONNX WEBHOOK ERROR] Gagal mengirim ke Vercel ({url}): {e}")
-
-# Menyimpan riwayat log foto real-time dari ESP32-CAM di memori PythonAnywhere (24/7)
-history_logs = []
 
 def load_onnx_model():
     global session, input_name
@@ -252,7 +282,7 @@ def get_latest_status():
           {
             "cam_id": "Cam 1",
             "name": "Bedengan Utama Zone A1",
-            "image_url": latest_telemetry["image_base64"] or "/mock_cam1.jpg",
+            "image_url": latest_telemetry["image_base64"] or "/dummy_photo/bestari_esp32cam_highres.jpg",
             "status": "active",
             "last_capture_time": latest_telemetry["last_detection_time"]
           }
@@ -401,6 +431,9 @@ def detect_pest():
         }
         history_logs.insert(0, new_log_entry)
         del history_logs[30:] # Batasi maksimal 30 log terbaru
+
+        # Simpan state terbaru ke disk agar persisten di seluruh worker process PythonAnywhere
+        save_state_to_disk()
 
         vercel_payload = {
             "cam_id": "Cam 1",
