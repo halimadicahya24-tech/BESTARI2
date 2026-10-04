@@ -7,8 +7,8 @@
     1. KAMERA SENSOR NODE KHUSUS (DEDICATED AI VISION SENSOR)
     2. REAL-TIME CAPTURE: OV2640 Camera + Flash LED (GPIO 4) dengan Brightness 5%
     3. OPTIMASI PSRAM/DRAM: Resolusi UXGA 1600x1200 / High-Def VGA
-    4. PRESENTATION GUARD: Otomatis menggunakan sampel terverifikasi jika sensor bermasalah
-    5. UPLOAD KE SERVER: Mengirim foto daun ke PythonAnywhere AI Server (/detect)
+    4. ERROR PLACEHOLDER GUARD: Mengunggah gambar bertuliskan "PENGAMBILAN FOTO GAGAL" jika sensor bermasalah
+    5. UPLOAD KE SERVER: Mengirim foto ke PythonAnywhere AI Server (/detect)
   ===============================================================================
 */
 
@@ -17,7 +17,7 @@
 #include "esp_camera.h"
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
-#include "leaf_sample.h" // Sampel Daun Terverifikasi Hama Ulat Grayak (Fallback Guard)
+#include "error_image.h" // Indikator Foto "PENGAMBILAN FOTO GAGAL" (Jika Kamera Physical Bermasalah)
 
 // ===============================================================================
 // 1. DEFINISI PIN CAMERA OV2640 (AI-THINKER MODEL)
@@ -268,8 +268,8 @@ bool captureAndUploadPhoto() {
 
   // 1. Tangkap frame real-time dari OV2640 dengan Flash LED 5%
   if (isCameraInitialized) {
-    Serial.println("\n📸 [CAMERA SENSOR] Menyediakan pencahayaan lembut (Flash LED Brightness 5%)...");
-    setFlashBrightness(5); // Nyalakan Senter Flash 5% untuk pencahayaan optimal
+    Serial.println("\n📸 [CAMERA SENSOR] Menyediakan pencahayaan terang & stabil (Flash LED Brightness 25%)...");
+    setFlashBrightness(25); // Nyalakan Senter Flash 25% untuk pencahayaan terang & bebas silau
     delay(200); // Beri jeda 200ms agar sensor OV2640 menyesuaikan auto-exposure
 
     // Buang frame lama dari buffer DMA saat lampu menyala
@@ -296,11 +296,11 @@ bool captureAndUploadPhoto() {
     setFlashBrightness(0);
   }
 
-  // 2. PRESENTATION GUARD: Fallback sampel daun jika kamera fisik dilepas/bermasalah
+  // 2. ERROR PLACEHOLDER GUARD: Mengunggah gambar indikator "PENGAMBILAN FOTO GAGAL" jika kamera fisik bermasalah
   if (!photo_data || photo_len == 0) {
-    Serial.println("🛡️ [PRESENTATION GUARD] Kamera fisik bermasalah. Mengirim sampel daun ulat grayak terverifikasi...");
-    photo_data = FALLBACK_LEAF_JPG;
-    photo_len  = FALLBACK_LEAF_LEN;
+    Serial.println("⚠️ [CAMERA ERROR] Kamera fisik bermasalah/gagal menangkap foto. Mengirim gambar indikator 'PENGAMBILAN FOTO GAGAL'...");
+    photo_data = ERROR_IMAGE_JPG;
+    photo_len  = ERROR_IMAGE_LEN;
   }
 
   // 3. Resolver DNS & Koneksi Socket TCP ke Server AI
@@ -337,6 +337,7 @@ bool captureAndUploadPhoto() {
   client.print(head);
   client.write(photo_data, photo_len);
   client.print(tail);
+  client.flush();
 
   // Pastikan memori framebuffer dilepas secara aman setelah streaming selesai
   if (fb) {
@@ -344,9 +345,32 @@ bool captureAndUploadPhoto() {
     fb = NULL;
   }
 
-  Serial.println("🎉 [HTTP SUCCESS] Sampel foto berhasil diunggah ke Server AI (/detect)!");
+  // Wajib menunggu HTTP Response dari Server PythonAnywhere agar koneksi TCP tidak terputus di tengah jalan
+  unsigned long timeout = millis();
+  while (client.connected() && !client.available()) {
+    if (millis() - timeout > 10000) {
+      Serial.println("❌ [HTTP ERROR] Server Response Timeout (10s)! Upload gagal.");
+      client.stop();
+      return false;
+    }
+    delay(50);
+  }
+
+  String responseLine = "";
+  if (client.available()) {
+    responseLine = client.readStringUntil('\n');
+  }
+
+  bool isSuccess = false;
+  if (responseLine.indexOf("200") >= 0) {
+    Serial.printf("🎉 [HTTP SUCCESS 200 OK] Foto Berhasil Diolah Server AI! Response: %s\n", responseLine.c_str());
+    isSuccess = true;
+  } else {
+    Serial.printf("⚠️ [HTTP RESPONSE WARN] Respon Server: %s\n", responseLine.c_str());
+  }
+
   client.stop();
-  return true;
+  return isSuccess;
 }
 
 // ===============================================================================

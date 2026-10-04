@@ -35,6 +35,9 @@ Thumbs.db
 
 # Exclude dataset & training runs
 dataset/
+dataset_ori/
+dataset_processed/
 runs/
+.gradio/
 
 .vercel

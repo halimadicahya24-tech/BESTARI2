@@ -18,6 +18,16 @@ export async function GET() {
         if (data.water_level !== undefined) currentSystemStatus.water_level = data.water_level;
         if (data.biopesticide_level !== undefined) currentSystemStatus.biopesticide_level = data.biopesticide_level;
         if (data.soil_moisture !== undefined) currentSystemStatus.soil_moisture = data.soil_moisture;
+        if (data.plant_status) currentSystemStatus.plant_status = data.plant_status;
+        if (data.detections) {
+          currentSystemStatus.detections = data.detections;
+          currentSystemStatus.camera_feeds[0].detections = data.detections;
+        }
+        if (data.ulat_grayak_count !== undefined) {
+          currentSystemStatus.threat_message = data.ulat_grayak_count > 0
+            ? `${data.ulat_grayak_count} hama terdeteksi (Ulat Grayak)`
+            : 'Tanaman dalam kondisi sehat & bebas hama';
+        }
       }
     }
   } catch (e) {

@@ -17,7 +17,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from flask import Flask, request, jsonify
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy as np
 
 # Zona Waktu WIB (Palembang / UTC+7)
@@ -40,7 +40,7 @@ def add_cors_headers(response):
 
 # Konfigurasi Path Model ONNX & Ambang Batas
 MODEL_PATH = os.environ.get("ONNX_MODEL_PATH", "best.onnx")
-CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", 0.60))
+CONF_THRESHOLD = float(os.environ.get("CONF_THRESHOLD", 0.35))
 VERCEL_APP_URL = os.environ.get("VERCEL_APP_URL", "https://bestari-3.vercel.app").rstrip("/")
 
 def nms(boxes, scores, iou_threshold=0.45):
@@ -115,7 +115,9 @@ system_config = {
 # Menyimpan riwayat log foto real-time dari ESP32-CAM (24/7)
 history_logs = []
 
-STATE_FILE = Path("latest_detection.json")
+# Path Absolut untuk File Sinkronisasi State di PythonAnywhere WSGI Workers
+BASE_DIR = Path(__file__).resolve().parent
+STATE_FILE = BASE_DIR / "latest_detection.json"
 
 def save_state_to_disk():
     try:
@@ -366,10 +368,10 @@ def detect_pest():
                     class_name = CLASS_NAMES[cls_id] if cls_id < len(CLASS_NAMES) else f"class_{cls_id}"
 
                     # Hanya hitung jika kelas terdeteksi adalah HAMA (bukan tanaman/daun sehat)
-                    threat_keywords = ["ulat", "grayak", "armyworm", "larva", "damage", "egg", "frass"]
-                    healthy_keywords = ["healthy", "safe", "sehat", "maize-healthy"]
+                    threat_keywords = ["ulat", "grayak", "armyworm", "larva", "damage", "egg", "frass", "pest", "hama", "class_0"]
+                    healthy_keywords = ["healthy", "safe", "sehat", "maize-healthy", "daun_sehat"]
                     
-                    is_pest_class = any(k in class_name.lower() for k in threat_keywords) and not any(h in class_name.lower() for h in healthy_keywords)
+                    is_pest_class = any(k in class_name.lower() for k in threat_keywords) or not any(h in class_name.lower() for h in healthy_keywords)
 
                     if is_pest_class:
                         x1 = float((cx - w / 2) * (orig_w / 640.0))
@@ -398,8 +400,27 @@ def detect_pest():
         relay_action = "TRIGGER_SPRAY" if should_spray else "IDLE"
         spray_duration_ms = system_config["spray_duration_sec"] * 1000
 
+        # Melukis Bounding Box lokasi hama secara permanen di piksel gambar
+        if detections:
+            draw = ImageDraw.Draw(pil_img)
+            for det in detections:
+                x1, y1, x2, y2 = det["bbox"]
+                label = f"{det['class_name']} {int(det['confidence'] * 100)}%"
+                # Gambar kotak hijau terang (width 4)
+                draw.rectangle([x1, y1, x2, y2], outline=(0, 255, 0), width=4)
+                # Gambar background & teks label
+                lbl_top = max(0, y1 - 22)
+                draw.rectangle([x1, lbl_top, min(orig_w, x1 + len(label) * 10 + 6), max(y1, lbl_top + 20)], fill=(0, 255, 0))
+                draw.text((x1 + 4, lbl_top + 2), label, fill=(0, 0, 0))
+
+            buf = io.BytesIO()
+            pil_img.save(buf, format="JPEG", quality=85)
+            final_bytes = buf.getvalue()
+        else:
+            final_bytes = image_bytes
+
         # Encode gambar ke Base64 untuk Webhook Vercel & Dashboard UI
-        img_b64 = "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")
+        img_b64 = "data:image/jpeg;base64," + base64.b64encode(final_bytes).decode("utf-8")
         current_time_str = datetime.now(WIB).strftime("%H:%M WIB")
 
         # Baca Sensor Kelembaban Tanah dari Header ESP32-CAM (jika ada)

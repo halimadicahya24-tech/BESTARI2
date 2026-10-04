@@ -1,20 +1,19 @@
 /*
   ===============================================================================
-    🌿 BESTARI - ESP32-CAM High Speed & High Resolution Photo Downloader
+    🌿 BESTARI - ESP32-CAM High Resolution Photo Capture, Downloader & AI
     Samsung Solve for Tomorrow 2026
   ===============================================================================
     FUNGSI UTAMA:
     1. Web Dashboard langsung di IP ESP32-CAM (akses dari Laptop / Browser HP)
-    2. Pilihan Resolusi Tinggi & Super Cepat: UXGA, SXGA, XGA (Default), SVGA, VGA
-    3. Pengaturan Kualitas JPEG (Quality 12 = Sangat Jernih & Transfer Kilat)
+    2. Pilihan Resolusi Tinggi: UXGA (1600x1200), SXGA (1280x1024), XGA, SVGA, VGA
+    3. Pengaturan Kualitas JPEG (Quality 10 = Kualitas Tertinggi)
     4. Kontrol Senter Flash LED Onboard (GPIO 4)
-    5. Tombol 1-Click Download (.jpg) langsung tersimpan di Laptop
-    6. OPTIMASI KECEPATAN: Wi-Fi Power Save OFF (WIFI_PS_NONE), 20MHz XCLK, Fast Buffer Acquisition
+    5. Tombol 1-Click Download (.jpg) langsung tersimpan di folder Downloads Laptop
+    6. Fitur Deteksi AI Terintegrasi (YOLOv8)
   ===============================================================================
 */
 
 #include <WiFi.h>
-#include <esp_wifi.h>
 #include "esp_camera.h"
 #include "esp_http_server.h"
 #include "soc/soc.h"
@@ -58,7 +57,7 @@ httpd_handle_t camera_httpd = NULL;
 bool flashState = false;
 
 // ===============================================================================
-// 3. INDEX HTML WEB DASHBOARD (OPTIMIZED FOR ULTRA-FAST LOAD & CAPTURE)
+// 3. INDEX HTML WEB DASHBOARD (DENGAN TAMPILAN MODERN, TOMBOL DOWNLOAD & AI)
 // ===============================================================================
 static const char PROGMEM INDEX_HTML[] = R"rawliteral(
 <!DOCTYPE html>
@@ -66,7 +65,7 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🌿 BESTARI ESP32-CAM High Speed Downloader</title>
+  <title>🌿 BESTARI ESP32-CAM AI & Downloader</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px; }
@@ -77,11 +76,14 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
     .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; background: #0f172a; padding: 16px; border-radius: 12px; border: 1px solid #334155; }
     .control-group { display: flex; flex-direction: column; gap: 6px; }
     label { font-size: 12px; font-weight: 600; color: #cbd5e1; }
-    select, button { padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; outline: none; border: none; cursor: pointer; transition: all 0.2s; }
-    select { background-color: #1e293b; color: #f8fafc; border: 1px solid #475569; }
-    select:focus { border-color: #38bdf8; }
+    select, button, input { padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; outline: none; border: none; cursor: pointer; transition: all 0.2s; }
+    select, input { background-color: #1e293b; color: #f8fafc; border: 1px solid #475569; }
+    select:focus, input:focus { border-color: #38bdf8; }
+    input { cursor: text; }
     .btn-primary { background-color: #0284c7; color: white; }
     .btn-primary:hover { background-color: #0369a1; transform: translateY(-1px); }
+    .btn-ai { background-color: #8b5cf6; color: white; }
+    .btn-ai:hover { background-color: #7c3aed; transform: translateY(-1px); }
     .btn-success { background-color: #16a34a; color: white; }
     .btn-success:hover { background-color: #15803d; transform: translateY(-1px); }
     .btn-warning { background-color: #d97706; color: white; }
@@ -94,56 +96,63 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
     .badge-blue { background: #0284c7; color: white; }
     .badge-green { background: #16a34a; color: white; }
     .badge-red { background: #dc2626; color: white; }
+    .badge-purple { background: #8b5cf6; color: white; }
     .loading { display: none; color: #38bdf8; font-weight: bold; font-size: 14px; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>🌿 BESTARI ESP32-CAM High Speed Downloader</h1>
-      <p class="subtitle">Ambil foto kualitas tinggi dengan kecapatan transfer Wi-Fi maksimal (Fast Latency < 500ms)</p>
+      <h1>🌿 BESTARI ESP32-CAM High-Res Downloader & AI</h1>
+      <p class="subtitle">Ambil foto kualitas tinggi (UXGA 1600x1200) untuk penelitian & pengujian sampel daun</p>
     </header>
 
     <div class="controls">
       <div class="control-group">
         <label for="res">Resolusi Foto (Framesize)</label>
         <select id="res" onchange="changeResolution(this.value)">
-          <option value="8" selected>XGA (1024x768 - Fast HD)</option>
-          <option value="10">UXGA (1600x1200 - 2MP Full HD)</option>
+          <option value="10" selected>UXGA (1600x1200 - HD 2MP)</option>
           <option value="9">SXGA (1280x1024)</option>
-          <option value="7">SVGA (800x600 - Super Fast)</option>
-          <option value="6">VGA (640x480 - Ultra Fast)</option>
+          <option value="8">XGA (1024x768)</option>
+          <option value="7">SVGA (800x600)</option>
+          <option value="6">VGA (640x480)</option>
+          <option value="5">CIF (400x296)</option>
         </select>
       </div>
 
       <div class="control-group">
-        <label for="quality">Kualitas JPEG (12 = Optimal Cepat, 10 = Detail Ultra)</label>
+        <label for="quality">Kualitas JPEG (10 = Terbaik, 30 = Kompresi)</label>
         <select id="quality" onchange="changeQuality(this.value)">
-          <option value="12" selected>Quality 12 (Sangat Cepat & Jernih)</option>
-          <option value="10">Quality 10 (Detail Maksimal)</option>
-          <option value="15">Quality 15 (Kompresi Ringan)</option>
-          <option value="20">Quality 20 (Ukuran Terkecil)</option>
+          <option value="10" selected>Quality 10 (Jernih & Detail)</option>
+          <option value="15">Quality 15 (Sedang)</option>
+          <option value="20">Quality 20 (Ringan)</option>
         </select>
+      </div>
+
+      <div class="control-group">
+        <label for="aiUrl">Endpoint Server AI (YOLOv8)</label>
+        <input type="text" id="aiUrl" value="https://halimadi.pythonanywhere.com/detect" placeholder="https://halimadi.pythonanywhere.com/detect">
       </div>
     </div>
 
     <div class="btn-group">
       <button class="btn-primary" onclick="capturePhoto()">📸 Ambil Foto (Take Photo)</button>
+      <button class="btn-ai" onclick="captureAndDetectAI()">🔍 Ambil & Deteksi AI</button>
       <button class="btn-success" id="btnDownload" onclick="downloadPhoto()" disabled>💾 Download Foto (.jpg)</button>
       <button class="btn-warning" id="btnFlash" onclick="toggleFlash()">💡 Senter Flash: OFF</button>
       <button style="background-color: #475569; color: white;" onclick="toggleStream()">📹 Live Stream</button>
     </div>
 
     <div class="preview-box">
-      <span class="loading" id="loadingText">⏳ Tekan 'Ambil Foto' untuk mengambil gambar...</span>
+      <span class="loading" id="loadingText">⏳ Tekan 'Ambil Foto' untuk memulai jepretan...</span>
       <img id="photoPreview" alt="Tampilan Foto ESP32-CAM" style="display:none;">
     </div>
 
     <div class="meta-bar">
       <span>Status: <span id="statusBadge" class="badge badge-blue">Ready</span></span>
+      <span>Hasil AI: <strong id="aiInfo">Belum diproses</strong></span>
       <span>Ukuran File: <strong id="fileSize">- KB</strong></span>
-      <span>Waktu Transfer: <strong id="transferTime">- ms</strong></span>
-      <span>Resolusi: <strong id="resInfo">XGA (1024x768)</strong></span>
+      <span>Resolusi: <strong id="resInfo">UXGA (1600x1200)</strong></span>
       <span>Timestamp: <strong id="timeInfo">-</strong></span>
     </div>
   </div>
@@ -160,12 +169,10 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
       const btnDownload = document.getElementById('btnDownload');
       const timeInfo = document.getElementById('timeInfo');
       const fileSize = document.getElementById('fileSize');
-      const transferTime = document.getElementById('transferTime');
 
       if (isStreaming) toggleStream();
 
-      const startTime = performance.now();
-      loading.innerText = '⚡ Mengambil foto kilat dari ESP32-CAM...';
+      loading.innerText = '⏳ Mengambil foto dari ESP32-CAM (UXGA HD)...';
       loading.style.display = 'block';
       img.style.display = 'none';
       status.innerText = 'Capturing...';
@@ -173,6 +180,7 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
 
       try {
         const timestamp = new Date().getTime();
+        // Cukup 1x HTTP request saja (Mencegah konflik double-request di ESP32)
         const res = await fetch('/capture?t=' + timestamp);
         if (!res.ok) throw new Error('HTTP status ' + res.status);
 
@@ -182,9 +190,6 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
 
         img.src = currentBlobUrl;
         img.onload = () => {
-          const endTime = performance.now();
-          const duration = Math.round(endTime - startTime);
-          
           loading.style.display = 'none';
           img.style.display = 'block';
           status.innerText = 'Foto Berhasil Ditangkap!';
@@ -193,7 +198,6 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
 
           const kb = (blob.size / 1024).toFixed(1);
           fileSize.innerText = kb + ' KB';
-          transferTime.innerText = duration + ' ms';
           timeInfo.innerText = new Date().toLocaleTimeString('id-ID');
         };
       } catch (err) {
@@ -206,11 +210,57 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
       }
     }
 
+    async function captureAndDetectAI() {
+      const status = document.getElementById('statusBadge');
+      const aiInfo = document.getElementById('aiInfo');
+      const aiUrlInput = document.getElementById('aiUrl');
+      const aiUrl = aiUrlInput ? aiUrlInput.value.trim() : 'https://halimadi.pythonanywhere.com/detect';
+
+      await capturePhoto();
+
+      setTimeout(async () => {
+        if (!currentBlobUrl) return;
+
+        status.innerText = 'Analyzing AI...';
+        status.className = 'badge badge-purple';
+        if (aiInfo) aiInfo.innerText = 'Mengirim ke Server AI...';
+
+        try {
+          const res = await fetch(currentBlobUrl);
+          const blob = await res.blob();
+
+          const formData = new FormData();
+          formData.append('image', blob, 'capture.jpg');
+
+          const aiRes = await fetch(aiUrl, { method: 'POST', body: formData });
+          if (!aiRes.ok) throw new Error('AI Server HTTP status ' + aiRes.status);
+          const data = await aiRes.json();
+
+          const pestCount = data.ulat_grayak_count || (data.detections ? data.detections.length : 0);
+          if (pestCount > 0) {
+            status.innerText = '⚠️ HAMA DETECTED!';
+            status.className = 'badge badge-red';
+            if (aiInfo) aiInfo.innerText = '🚨 ' + pestCount + ' Ulat Grayak';
+          } else {
+            status.innerText = 'BEBAS HAMA';
+            status.className = 'badge badge-green';
+            if (aiInfo) aiInfo.innerText = '🌿 Tanaman Sehat';
+          }
+        } catch (err) {
+          console.error("AI Error:", err);
+          status.innerText = 'AI Offline';
+          status.className = 'badge badge-red';
+          if (aiInfo) aiInfo.innerText = 'Gagal AI (Foto Raw Tampil)';
+        }
+      }, 400);
+    }
+
     function downloadPhoto() {
       if (!currentBlobUrl) return;
       const timeStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const filename = `bestari_esp32cam_${timeStr}.jpg`;
 
+      // Download langsung dari Blob URL yang sudah ada di memori browser
       const link = document.createElement('a');
       link.href = currentBlobUrl;
       link.download = filename;
@@ -232,10 +282,10 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
     function changeResolution(val) {
       const resMap = {
         '10': 'UXGA (1600x1200)', '9': 'SXGA (1280x1024)', '8': 'XGA (1024x768)',
-        '7': 'SVGA (800x600)', '6': 'VGA (640x480)'
+        '7': 'SVGA (800x600)', '6': 'VGA (640x480)', '5': 'CIF (400x296)'
       };
       document.getElementById('resInfo').innerText = resMap[val] || val;
-      fetch('/control?var=framesize&val=' + val).then(() => capturePhoto());
+      fetch('/control?var=framesize&val=' + val).then(() => setTimeout(capturePhoto, 300));
     }
 
     function changeQuality(val) {
@@ -257,8 +307,9 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
       }
     }
 
+    // Auto-capture foto pertama saat halaman dibuka
     window.addEventListener('load', () => {
-      capturePhoto();
+      setTimeout(capturePhoto, 500);
     });
   </script>
 </body>
@@ -266,31 +317,66 @@ static const char PROGMEM INDEX_HTML[] = R"rawliteral(
 )rawliteral";
 
 // ===============================================================================
-// 4. HTTP SERVER HANDLERS (FAST & STREAMLINED)
+// 4. HTTP SERVER HANDLERS
 // ===============================================================================
 
-// Handler Index (Web Dashboard) - Pengiriman Langsung Tanpa Chunking Terfragmentasi
+// Handler Index (Web Dashboard) dengan Chunked Streaming
 static esp_err_t index_handler(httpd_req_t *req) {
   httpd_resp_set_type(req, "text/html");
   httpd_resp_set_hdr(req, "Content-Encoding", "identity");
-  return httpd_resp_send(req, INDEX_HTML, HTTPD_RESP_USE_STRLEN);
+  
+  const char* ptr = INDEX_HTML;
+  size_t left = strlen(INDEX_HTML);
+  
+  while (left > 0) {
+    size_t chunk_size = (left > 1024) ? 1024 : left;
+    esp_err_t res = httpd_resp_send_chunk(req, ptr, chunk_size);
+    if (res != ESP_OK) {
+      httpd_resp_send_chunk(req, NULL, 0);
+      return res;
+    }
+    ptr += chunk_size;
+    left -= chunk_size;
+  }
+  return httpd_resp_send_chunk(req, NULL, 0);
 }
 
-// Handler Single Capture (Preview Foto Inline - Pengambilan Memori Cepat)
+// Handler Single Capture (Preview Foto Inline)
 static esp_err_t capture_handler(httpd_req_t *req) {
-  camera_fb_t * fb = esp_camera_fb_get();
-  
-  // Jika buffer NULL, lakukan retry cepat tanpa delay panjang
-  if (!fb) {
-    for (int i = 0; i < 3; i++) {
-      delay(20);
-      fb = esp_camera_fb_get();
-      if (fb) break;
+  camera_fb_t * fb = NULL;
+  esp_err_t res = ESP_OK;
+
+  Serial.println("\n📸 [CAPTURE REQUEST] Memproses permintaan jepret foto...");
+  Serial.printf("  - Free Heap DRAM  : %u bytes (%u KB)\n", ESP.getFreeHeap(), ESP.getFreeHeap() / 1024);
+  if (psramFound()) {
+    Serial.printf("  - Free PSRAM      : %u bytes (%.2f MB)\n", ESP.getFreePsram(), (float)ESP.getFreePsram() / (1024.0 * 1024.0));
+  }
+
+  // 1. Buang (flush) frame lama dari buffer DMA
+  fb = esp_camera_fb_get();
+  if (fb) {
+    Serial.printf("  - Flushed frame buffer lama (%u bytes)\n", fb->len);
+    esp_camera_fb_return(fb);
+    fb = NULL;
+  }
+
+  // 2. Ambil frame foto fresh baru dengan retry loop
+  for (int i = 0; i < 5; i++) {
+    fb = esp_camera_fb_get();
+    if (fb) {
+      Serial.printf("  ✅ Success jepret foto pada percobaan ke-%d!\n", i + 1);
+      Serial.printf("  - Dimensions : %d x %d px\n", fb->width, fb->height);
+      Serial.printf("  - Format     : %d (JPEG)\n", fb->format);
+      Serial.printf("  - File Size  : %u bytes (%.1f KB)\n", fb->len, (float)fb->len / 1024.0);
+      break;
     }
+    Serial.printf("  ⚠️ Percobaan ke-%d: esp_camera_fb_get() mengembalikan NULL, retrying...\n", i + 1);
+    delay(150);
   }
 
   if (!fb) {
-    Serial.println("❌ [CAPTURE ERROR] esp_camera_fb_get() mengembalikan NULL!");
+    Serial.println("❌ [CAPTURE ERROR] esp_camera_fb_get() tetap NULL setelah 5x percobaan!");
+    Serial.println("   -> Kemungkinan Penyebab: Sinyal XCLK Jitter / Kabel Pita Kamera Terlepas / Pasokan 5V Drop.");
     httpd_resp_send_500(req);
     return ESP_FAIL;
   }
@@ -299,21 +385,30 @@ static esp_err_t capture_handler(httpd_req_t *req) {
   httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=bestari_photo.jpg");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
-  esp_err_t res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
+  res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
   esp_camera_fb_return(fb);
+  Serial.println("✅ [CAPTURE FINISHED] Foto berhasil dikirimkan ke browser!");
   return res;
 }
 
-// Handler Force Download (1-Click Download JPG)
+// Handler Force Download (1-Click Download JPG langsung tersimpan di Laptop)
 static esp_err_t download_handler(httpd_req_t *req) {
-  camera_fb_t * fb = esp_camera_fb_get();
+  camera_fb_t * fb = NULL;
+  esp_err_t res = ESP_OK;
 
-  if (!fb) {
-    for (int i = 0; i < 3; i++) {
-      delay(20);
-      fb = esp_camera_fb_get();
-      if (fb) break;
-    }
+  Serial.println("\n💾 [DOWNLOAD REQUEST] Memproses permintaan download foto...");
+
+  // Flush buffer lama
+  fb = esp_camera_fb_get();
+  if (fb) {
+    esp_camera_fb_return(fb);
+    fb = NULL;
+  }
+
+  for (int i = 0; i < 5; i++) {
+    fb = esp_camera_fb_get();
+    if (fb) break;
+    delay(150);
   }
 
   if (!fb) {
@@ -326,8 +421,9 @@ static esp_err_t download_handler(httpd_req_t *req) {
   httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=bestari_esp32cam_highres.jpg");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
-  esp_err_t res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
+  res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
   esp_camera_fb_return(fb);
+  Serial.printf("✅ [DOWNLOAD FINISHED] File JPG berhasil didownload (%u bytes)\n", fb->len);
   return res;
 }
 
@@ -340,9 +436,11 @@ static esp_err_t flash_handler(httpd_req_t *req) {
       if (strcmp(value, "on") == 0) {
         digitalWrite(FLASH_LED_PIN, HIGH);
         flashState = true;
+        Serial.println("[FLASH] Senter LED ON");
       } else {
         digitalWrite(FLASH_LED_PIN, LOW);
         flashState = false;
+        Serial.println("[FLASH] Senter LED OFF");
       }
     }
   }
@@ -364,9 +462,11 @@ static esp_err_t control_handler(httpd_req_t *req) {
       if (strcmp(var, "framesize") == 0) {
         if (s->pixformat == PIXFORMAT_JPEG) {
           s->set_framesize(s, (framesize_t)val_int);
+          Serial.printf("[CONTROL] Resolution diset ke framesize: %d\n", val_int);
         }
       } else if (strcmp(var, "quality") == 0) {
         s->set_quality(s, val_int);
+        Serial.printf("[CONTROL] Quality diset ke: %d\n", val_int);
       }
     }
   }
@@ -390,7 +490,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
   while (true) {
     fb = esp_camera_fb_get();
     if (!fb) {
-      delay(20);
+      delay(50);
       continue;
     }
 
@@ -410,7 +510,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
 
     esp_camera_fb_return(fb);
     if (res != ESP_OK) break;
-    delay(5);
+    delay(10);
   }
 
   return res;
@@ -474,7 +574,7 @@ void startCameraServer() {
     httpd_register_uri_handler(camera_httpd, &flash_uri);
     httpd_register_uri_handler(camera_httpd, &control_uri);
     httpd_register_uri_handler(camera_httpd, &stream_uri);
-    Serial.println("[SERVER] Web Downloader Server Aktif di Port 80 (High Speed Mode)!");
+    Serial.println("[SERVER] Web Downloader Server Aktif di Port 80!");
   }
 }
 
@@ -544,10 +644,10 @@ void setup() {
   digitalWrite(FLASH_LED_PIN, LOW);
 
   Serial.println("\n========================================================");
-  Serial.println("  🌿 BESTARI - ESP32-CAM High Speed Photo Downloader");
+  Serial.println("  🌿 BESTARI - ESP32-CAM High-Res Photo Downloader & AI");
   Serial.println("========================================================");
 
-  // Konfigurasi Kamera OV2640 Dioptimalkan
+  // Konfigurasi Kamera OV2640
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer   = LEDC_TIMER_0;
@@ -567,20 +667,26 @@ void setup() {
   config.pin_sscb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn     = PWDN_GPIO_NUM;
   config.pin_reset    = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 20000000; // 20 MHz untuk transfer data sensor maksimal & cepat
+  config.xclk_freq_hz = 16000000; // 16 MHz untuk stabilitas transfer data kamera
   config.pixel_format = PIXFORMAT_JPEG;
 
   // Diagnostik Hardware Memori DRAM & PSRAM
+  Serial.println("\n📊 [DIAGNOSTIK MEMORI HARDWARE]");
+  Serial.printf("  - Free DRAM (Heap) : %u bytes (%u KB)\n", ESP.getFreeHeap(), ESP.getFreeHeap() / 1024);
   bool hasPsram = psramFound();
   Serial.printf("  - Status PSRAM     : %s\n", hasPsram ? "✅ TERDETEKSI (Active)" : "❌ TIDAK TERDETEKSI");
+  if (hasPsram) {
+    Serial.printf("  - Total PSRAM      : %u bytes (%.2f MB)\n", ESP.getPsramSize(), (float)ESP.getPsramSize() / (1024.0 * 1024.0));
+    Serial.printf("  - Free PSRAM       : %u bytes (%.2f MB)\n", ESP.getFreePsram(), (float)ESP.getFreePsram() / (1024.0 * 1024.0));
+  }
 
   if (hasPsram) {
-    config.frame_size = FRAMESIZE_XGA; // Default XGA (1024x768 - Transfer sangat cepat & tetap HD)
-    config.jpeg_quality = 12;          // Kompresi optimal (Ukuran file ~40-60KB vs 250KB)
+    config.frame_size = FRAMESIZE_UXGA;
+    config.jpeg_quality = 10;
     config.fb_count = 2;
     config.grab_mode = CAMERA_GRAB_LATEST;
     config.fb_location = CAMERA_FB_IN_PSRAM;
-    Serial.println("\n[INFO] PSRAM Digunakan! Resolusi default diset ke XGA (1024x768) Quality 12.");
+    Serial.println("\n[INFO] PSRAM Digunakan! Resolusi default: UXGA (1600x1200 - 2MP).");
   } else {
     config.frame_size = FRAMESIZE_VGA;
     config.jpeg_quality = 12;
@@ -590,56 +696,85 @@ void setup() {
     Serial.println("\n[INFO] PSRAM Tidak Aktif. Resolusi default: VGA (640x480).");
   }
 
+  Serial.println("\n📷 [INISIALISASI SENSOR OV2640]");
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
     Serial.printf("❌ [ERROR CRITICAL] esp_camera_init() GAGAL dengan Kode Hex: 0x%x\n", err);
+    if (err == 0x105) {
+      Serial.println("   -> Error 0x105 (ESP_ERR_NOT_FOUND): I2C SCCB Kamera tidak merespon!");
+      Serial.println("   -> Penyebab: Lensa OV2640 terlepas atau klip fleksibel hitam tidak terkunci!");
+    } else if (err == 0x101) {
+      Serial.println("   -> Error 0x101 (ESP_ERR_NO_MEM): Memori RAM tidak mencukupi untuk framebuffer.");
+    }
     return;
   }
   Serial.println("✅ esp_camera_init() BERHASIL!");
 
   sensor_t * s = esp_camera_sensor_get();
   if (s) {
+    Serial.printf("✅ Sensor Kamera Terdeteksi! ID PID: 0x%04x\n", s->id.PID);
     s->set_brightness(s, 1);
     s->set_contrast(s, 1);
     s->set_saturation(s, 0);
+  } else {
+    Serial.println("⚠️ Warning: esp_camera_sensor_get() mengembalikan NULL!");
   }
 
-  // Jalankan Wi-Fi Scanner Diagnostik
+  // 1. Tampilkan Informasi Hardware Wi-Fi
+  Serial.printf("[WIFI] ESP32-CAM MAC Address: %s\n", WiFi.macAddress().c_str());
+
+  // 2. Jalankan Wi-Fi Scanner Diagnostik
   printWiFiScanResults();
 
-  // Hubungkan ke Wi-Fi
-  Serial.printf("[WIFI] Mencoba menghubungkan ke SSID: '%s'...\n", WIFI_SSID);
+  // 3. Hubungkan ke Wi-Fi dengan Log Diagnostik Perubahan Status
+  Serial.printf("[WIFI] Mencoba menghubungkan ke SSID: '%s' (Pass: '%s')...\n", WIFI_SSID, WIFI_PASSWORD);
   WiFi.persistent(false);
   WiFi.disconnect(true);
   delay(200);
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
-  
-  // Nonaktifkan Wi-Fi Modem Sleep & Tingkatkan Sinyal ke Max
-  esp_wifi_set_ps(WIFI_PS_NONE);
-  WiFi.setTxPower(WIFI_POWER_19_5dBm);
-  
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 40) {
-    delay(300);
+  wl_status_t lastStatus = (wl_status_t)99;
+
+  while (WiFi.status() != WL_CONNECTED && attempts < 50) {
+    delay(500);
     attempts++;
-    Serial.print(".");
+
+    wl_status_t currentStatus = WiFi.status();
+    if (currentStatus != lastStatus) {
+      lastStatus = currentStatus;
+      Serial.printf("\n[WIFI STATUS LOG] (%d) -> %s\n", currentStatus, getWiFiStatusName(currentStatus));
+    } else {
+      Serial.print(".");
+    }
   }
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\n🎉 [WIFI BERHASIL TERHUBUNG!]");
     Serial.printf("IP Address ESP32-CAM: %s\n", WiFi.localIP().toString().c_str());
     Serial.printf("Kekuatan Sinyal (RSSI): %d dBm\n", WiFi.RSSI());
-    Serial.println("  👉 HTTP Server Siap di: http://" + WiFi.localIP().toString());
+    Serial.println("--------------------------------------------------------");
+    Serial.print("  🌐 BUKA URL INI DI BROWSER LAPTOP ANDA:\n  👉 http://");
+    Serial.println(WiFi.localIP());
+    Serial.println("--------------------------------------------------------\n");
 
     startCameraServer();
-  } else {m
-    Serial.println("\n❌ [WIFI GAGAL TERHUBUNG]");
+  } else {
+    wl_status_t finalStatus = WiFi.status();
+    Serial.println("\n\n❌ [WIFI GAGAL TERHUBUNG]");
+    Serial.printf("Status Akhir (%d): %s\n", finalStatus, getWiFiStatusName(finalStatus));
+    Serial.println("========================================================");
+    Serial.println("PANDUAN SOLUSI BERDASARKAN HASIL DIAGNOSTIK:");
+    Serial.println("1. Jika WL_NO_SSID_AVAIL: Hotspot HP belum terdeteksi. Matikan & hidupkan kembali Hotspot HP.");
+    Serial.println("2. Jika WL_CONNECT_FAILED: Password salah ATAU Hotspot menggunakan WPA3.");
+    Serial.println("   -> Di HP: Ubah Keamanan Hotspot dari 'WPA3' menjadi 'WPA2-Personal'.");
+    Serial.println("3. Jika WL_CONNECTION_LOST / Resets: Pasokan daya 5V kurang stabil (gunakan 5V 2A).");
+    Serial.println("========================================================\n");
   }
 }
 
 void loop() {
-  delay(10000);
+  delay(10000); // Server berjalan secara asynchronous di background HTTPD task
 }

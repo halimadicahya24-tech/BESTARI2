@@ -148,9 +148,9 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
           date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           cam_id: 'Cam 1',
           status: isWarning ? 'warning' : 'safe',
-          hama_terdeteksi: data.ulat_grayak_count || 0,
-          confidence: 0.92,
-          image_url: data.latest_image,
+          confidence: (data.detections && data.detections.length > 0 && data.detections[0].confidence)
+            ? Number(data.detections[0].confidence)
+            : (isWarning ? 0.85 : 0.0),
           threat_type: isWarning ? `Ulat Grayak (${data.ulat_grayak_count || 1} ekor)` : 'Daun Sehat / Safe',
           detections: data.detections || []
         };
