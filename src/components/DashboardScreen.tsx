@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Camera, AlertTriangle, CheckCircle, Bug, Droplet, Cpu, ShieldCheck, Zap } from 'lucide-react';
+import { Camera, AlertTriangle, CheckCircle, Bug, Droplet, Cpu, ShieldCheck, Zap, Maximize2 } from 'lucide-react';
 import { SystemStatusResponse, CameraFeed } from '../lib/types';
 import { triggerManualPump } from '../lib/api';
+import { WeatherWidget } from './WeatherWidget';
+import { ImageInspectorModal } from './ImageInspectorModal';
 
 interface DashboardScreenProps {
   systemStatus: SystemStatusResponse;
@@ -20,6 +22,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [selectedCamId, setSelectedCamId] = useState<string>(cameraFeeds[0]?.cam_id || 'Cam 1');
   const [showAiBoxes, setShowAiBoxes] = useState<boolean>(true);
   const [isSpraying, setIsSpraying] = useState<boolean>(false);
+  const [inspectImageUrl, setInspectImageUrl] = useState<string | null>(null);
 
   const isWarning = systemStatus.plant_status === 'warning';
   const activeCam = cameraFeeds.find((c: CameraFeed) => c.cam_id === selectedCamId) || cameraFeeds[0];
@@ -46,6 +49,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   return (
     <div className="p-4 space-y-3.5 pb-24 bg-[#F8FAF9] animate-fade-in font-sans">
+      {/* Section 0: Real-Time Farm Weather Widget */}
+      <WeatherWidget />
+
       {/* Section 1: AI Vision Viewfinder & Camera Selector */}
       <div className="bg-white rounded-2xl p-4 border border-[#E1E3E2] shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
@@ -122,12 +128,28 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             ESP32-CAM: {selectedCamId.toUpperCase()}
           </div>
 
-          <button
-            onClick={() => setShowAiBoxes(!showAiBoxes)}
-            className="absolute top-2.5 right-2.5 bg-[#163F4C]/80 hover:bg-[#163F4C] text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md border border-white/20 transition-all"
-          >
-            {showAiBoxes ? 'YOLO Overlay: ON' : 'YOLO Overlay: OFF'}
-          </button>
+          <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                const currentUrl = activeCam?.image_url
+                  ? (activeCam.image_url.startsWith('data:')
+                      ? activeCam.image_url
+                      : `${activeCam.image_url}${activeCam.image_url.includes('?') ? '&' : '?'}t=${encodeURIComponent(activeCam.last_capture_time || systemStatus.last_updated || 'live')}`)
+                  : '/dummy_photo/bestari_esp32cam_highres.jpg';
+                setInspectImageUrl(currentUrl);
+              }}
+              className="bg-[#163F4C]/80 hover:bg-[#163F4C] active:scale-95 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md border border-white/20 transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <Maximize2 className="w-3 h-3 text-[#B8EAD7]" />
+              <span>Inspeksi Foto</span>
+            </button>
+            <button
+              onClick={() => setShowAiBoxes(!showAiBoxes)}
+              className="bg-[#163F4C]/80 hover:bg-[#163F4C] text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md border border-white/20 transition-all cursor-pointer"
+            >
+              {showAiBoxes ? 'YOLO: ON' : 'YOLO: OFF'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -282,6 +304,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           <span className="text-[10px] font-bold text-[#B8EAD7]">NODE A1</span>
         </div>
       </div>
+
+      {/* FULLSCREEN PHOTO INSPECTOR MODAL */}
+      <ImageInspectorModal
+        imageUrl={inspectImageUrl}
+        title={`Inspeksi Foto Kamera (${selectedCamId.toUpperCase()})`}
+        onClose={() => setInspectImageUrl(null)}
+      />
     </div>
   );
 };

@@ -112,8 +112,11 @@ export async function POST(request: Request) {
 
     // Buat Entri Log Visual Baru jika ada Gambar
     if (image_url) {
+      const imgFingerprint = image_url.length > 60 ? image_url.slice(-60) : image_url;
+      const deterministicId = `log_${formatted_time}_${imgFingerprint}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+
       const newLog: VisualLog = {
-        id: `log_${Date.now()}`,
+        id: deterministicId,
         timestamp,
         formatted_time,
         date: dateStr,
@@ -126,8 +129,11 @@ export async function POST(request: Request) {
         detections: isWarning ? detections : [],
       };
 
-      // Tambahkan ke paling depan, batasi maksimal 50 log terbaru
-      currentVisualLogs = [newLog, ...currentVisualLogs.slice(0, 49)];
+      // Filter out existing log with same ID or image fingerprint before adding
+      const filtered = currentVisualLogs.filter(
+        (log) => log.id !== deterministicId && log.image_url !== image_url
+      );
+      currentVisualLogs = [newLog, ...filtered.slice(0, 49)];
     }
 
     return NextResponse.json(

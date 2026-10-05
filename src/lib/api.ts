@@ -59,13 +59,38 @@ function persistStatus(status: SystemStatusResponse): void {
   } catch {}
 }
 
+export function deduplicateLogs(logs: VisualLog[]): VisualLog[] {
+  const map = new Map<string, VisualLog>();
+  logs.forEach((item) => {
+    if (item.id && item.id.startsWith('log_hist_')) {
+      map.set(item.id, item);
+      return;
+    }
+    const imgKey = item.image_url
+      ? (item.image_url.startsWith('data:image') ? item.image_url.slice(-60) : item.image_url)
+      : '';
+    const key = item.id && !item.id.startsWith('log_')
+      ? item.id
+      : `${imgKey}_${item.formatted_time || ''}_${item.threat_type || ''}`;
+
+    if (!map.has(key)) {
+      map.set(key, item);
+    }
+  });
+  const result = Array.from(map.values());
+  result.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+  return result.slice(0, 50);
+}
+
 export function getSavedLogs(): VisualLog[] {
   if (typeof window === 'undefined') return initialVisualLogs;
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_LOGS_KEY);
     if (!raw) return initialVisualLogs;
     const parsed: VisualLog[] = JSON.parse(raw);
-    return parsed.length > 0 ? parsed : initialVisualLogs;
+    if (!Array.isArray(parsed) || parsed.length === 0) return initialVisualLogs;
+    const clean = deduplicateLogs(parsed);
+    return clean.length > 0 ? clean : initialVisualLogs;
   } catch {
     return initialVisualLogs;
   }
@@ -74,25 +99,13 @@ export function getSavedLogs(): VisualLog[] {
 export function persistLogs(logs: VisualLog[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(LOCAL_STORAGE_LOGS_KEY, JSON.stringify(logs));
+    const clean = deduplicateLogs(logs);
+    localStorage.setItem(LOCAL_STORAGE_LOGS_KEY, JSON.stringify(clean));
   } catch {}
 }
 
 function mergeLogs(existing: VisualLog[], incoming: VisualLog[]): VisualLog[] {
-  const map = new Map<string, VisualLog>();
-  // Store existing logs first
-  existing.forEach((item) => {
-    const key = item.id || `${item.timestamp}_${item.formatted_time}`;
-    map.set(key, item);
-  });
-  // Overlay incoming logs
-  incoming.forEach((item) => {
-    const key = item.id || `${item.timestamp}_${item.formatted_time}`;
-    map.set(key, item);
-  });
-  const merged = Array.from(map.values());
-  merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
-  return merged.slice(0, 50);
+  return deduplicateLogs([...incoming, ...existing]);
 }
 
 export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse; isLive: boolean }> {
@@ -141,16 +154,22 @@ export async function fetchLatestStatus(): Promise<{ data: SystemStatusResponse;
       // Auto-save visual log jika ada foto terbaru dari ESP32-CAM
       if (data.latest_image) {
         const isWarning = data.pest_detected || data.threat_detected;
+        const timeStr = data.last_detection_time || 'Baru Saja';
+        const imgFingerprint = data.latest_image.length > 60 ? data.latest_image.slice(-60) : data.latest_image;
+        const deterministicId = `log_${timeStr}_${imgFingerprint}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+
         const newLog: VisualLog = {
-          id: `log_${Date.now()}`,
+          id: deterministicId,
           timestamp: new Date().toISOString(),
-          formatted_time: data.last_detection_time || 'Baru Saja',
+          formatted_time: timeStr,
           date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           cam_id: 'Cam 1',
           status: isWarning ? 'warning' : 'safe',
+          hama_terdeteksi: data.ulat_grayak_count || (isWarning ? 1 : 0),
           confidence: (data.detections && data.detections.length > 0 && data.detections[0].confidence)
             ? Number(data.detections[0].confidence)
             : (isWarning ? 0.85 : 0.0),
+          image_url: data.latest_image || '',
           threat_type: isWarning ? `Ulat Grayak (${data.ulat_grayak_count || 1} ekor)` : 'Daun Sehat / Safe',
           detections: data.detections || []
         };

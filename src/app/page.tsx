@@ -13,6 +13,7 @@ import { HardwarePinoutModal } from '../components/HardwarePinoutModal';
 import { initialSystemStatus, initialVisualLogs } from '../lib/mockData';
 import { SystemStatusResponse, VisualLog } from '../lib/types';
 import { fetchLatestStatus, fetchVisualLogs } from '../lib/api';
+import { applyFontSize, getSavedFontSize } from '../lib/fontSize';
 import { X, Sparkles, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export default function Home() {
@@ -25,6 +26,12 @@ export default function Home() {
   const [showNotificationsModal, setShowNotificationsModal] = useState<boolean>(false);
   const [showMenuDrawer, setShowMenuDrawer] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+
+  // Apply saved font size setting on startup
+  useEffect(() => {
+    const savedFont = getSavedFontSize();
+    applyFontSize(savedFont);
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) return;

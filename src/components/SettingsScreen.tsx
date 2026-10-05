@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sliders, Cpu, LogOut, CheckCircle2, ShieldCheck, Server, RefreshCw, Globe, ChevronRight, Phone, User, MessageSquare } from 'lucide-react';
+import { Sliders, Cpu, LogOut, CheckCircle2, ShieldCheck, Server, RefreshCw, Globe, ChevronRight, Phone, User, MessageSquare, Type } from 'lucide-react';
 import { getApiBaseUrl, setApiBaseUrl, testApiConnection, updateSystemConfig, fetchSystemConfig } from '../lib/api';
+import { FontSizeOption, FONT_SIZE_OPTIONS, getSavedFontSize, applyFontSize } from '../lib/fontSize';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -11,6 +12,7 @@ interface SettingsScreenProps {
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpenPinouts, isConnected }) => {
+  const [selectedFontSize, setSelectedFontSize] = useState<FontSizeOption>('normal');
   const [autoSprayEnabled, setAutoSprayEnabled] = useState<boolean>(true);
   const [agitateBeforeSpray, setAgitateBeforeSpray] = useState<boolean>(true);
   const [sprayDuration, setSprayDuration] = useState<number>(3);
@@ -18,6 +20,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
   const [apiUrl, setApiUrl] = useState<string>(getApiBaseUrl());
   const [apiStatus, setApiStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
   const [feedbackMessage, setFeedbackMessage] = useState<string>('');
+
+  useEffect(() => {
+    setSelectedFontSize(getSavedFontSize());
+  }, []);
+
+  const handleFontSizeChange = (size: FontSizeOption) => {
+    setSelectedFontSize(size);
+    applyFontSize(size);
+  };
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -101,6 +112,58 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
 
   return (
     <div className="p-4 space-y-4 pb-24 bg-[#F8FAF9] animate-fade-in font-sans">
+      {/* SECTION 0: PENGATURAN UKURAN FONT WEBSITE (TOP MOST CARD) */}
+      <div className="bg-white rounded-2xl p-4 border border-[#E1E3E2] shadow-2xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[#305664] flex items-center justify-center text-white shadow-2xs">
+              <Type className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-extrabold text-[#191C1C] font-hanken">Pengaturan Ukuran Font Website</h3>
+              <p className="text-[11px] text-[#41484B]">Pilih skala huruf untuk kenyamanan membaca</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#B8EAD7] text-[#1F4F41]">
+            Global UI
+          </span>
+        </div>
+
+        {/* Font Size Selector Pills */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {FONT_SIZE_OPTIONS.map((opt) => {
+            const isSelected = selectedFontSize === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => handleFontSizeChange(opt.id)}
+                className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                  isSelected
+                    ? 'bg-[#305664] text-white border-[#305664] shadow-xs'
+                    : 'bg-[#F2F4F3] text-[#41484B] border-[#E1E3E2] hover:bg-[#E5E8E6]'
+                }`}
+              >
+                <span className="font-extrabold font-hanken">{opt.label}</span>
+                <span className={`text-[10px] font-mono mt-0.5 ${isSelected ? 'text-[#B8EAD7]' : 'text-[#71787B]'}`}>
+                  {opt.px}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Live Font Preview Box */}
+        <div className="bg-[#F8FAF9] p-3 rounded-xl border border-[#E1E3E2] text-center">
+          <span className="text-[10px] font-bold text-[#71787B] block uppercase tracking-wider mb-1 font-hanken">
+            Pratinjau Ukuran Font Teks
+          </span>
+          <p className="text-xs font-medium text-[#191C1C] leading-snug">
+            🌱 BESTARI v2.0 - Sistem Monitoring Smart Precision Agriculture
+          </p>
+        </div>
+      </div>
+
       {/* SECTION 1: HARDWARE GPIO & PINOUT BANNER */}
       <div className="bg-white rounded-2xl p-4 border border-[#E1E3E2] shadow-2xs space-y-3">
         <div className="flex items-center justify-between">

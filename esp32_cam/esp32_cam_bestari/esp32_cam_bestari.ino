@@ -266,11 +266,12 @@ bool captureAndUploadPhoto() {
   const uint8_t * photo_data = NULL;
   size_t photo_len = 0;
 
-  // 1. Tangkap frame real-time dari OV2640 dengan Flash LED 5%
+  // 1. Tangkap frame real-time dari OV2640 dengan Flash LED (Lampu menyala 1s sebelum & 1s sesudah foto)
   if (isCameraInitialized) {
     Serial.println("\n📸 [CAMERA SENSOR] Menyediakan pencahayaan terang & stabil (Flash LED Brightness 25%)...");
-    setFlashBrightness(25); // Nyalakan Senter Flash 25% untuk pencahayaan terang & bebas silau
-    delay(200); // Beri jeda 200ms agar sensor OV2640 menyesuaikan auto-exposure
+    Serial.println("💡 [FLASH LED] Menyalakan lampu flash 1 detik sebelum pengambilan foto...");
+    setFlashBrightness(25); // Nyalakan Senter Flash 25%
+    delay(1000); // Jeda 1000ms (1 detik) sebelum foto diambil agar pencahayaan & auto-exposure stabil
 
     // Buang frame lama dari buffer DMA saat lampu menyala
     fb = esp_camera_fb_get();
@@ -292,8 +293,11 @@ bool captureAndUploadPhoto() {
       delay(150);
     }
 
-    // Matikan Flash LED segera setelah frame foto berhasil ditangkap
-    setFlashBrightness(0);
+    // Mempertahankan lampu menyala 1 detik setelah foto berhasil ditangkap
+    Serial.println("💡 [FLASH LED] Mempertahankan lampu menyala 1 detik setelah pengambilan foto...");
+    delay(1000); // Jeda 1000ms (1 detik) setelah foto diambil
+    setFlashBrightness(0); // Matikan Flash LED
+    Serial.println("💡 [FLASH LED] Lampu flash dimatikan.");
   }
 
   // 2. ERROR PLACEHOLDER GUARD: Mengunggah gambar indikator "PENGAMBILAN FOTO GAGAL" jika kamera fisik bermasalah
