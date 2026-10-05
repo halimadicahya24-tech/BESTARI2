@@ -305,7 +305,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onOpen
         {/* Confidence Threshold Slider */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-bold">
-            <span className="text-[#191C1C]">Tingkat Kepercayaan YOLO Confidence</span>
+            <span className="text-[#191C1C]">Tingkat Kepercayaan AI YOLO (AI pendeteksi hama)</span>
             <span className="text-[#305664] font-mono">{confidenceThreshold}%</span>
           </div>
           <input
